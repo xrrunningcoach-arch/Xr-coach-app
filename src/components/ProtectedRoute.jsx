@@ -37,6 +37,25 @@ export default function ProtectedRoute({ role, children }) {
     )
   }
 
+  // Atleta archivado por el entrenador: no puede usar la app hasta que lo reactive.
+  if (profile.role === 'athlete' && profile.is_active === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-5">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="text-sm text-navy" role="status">
+            Tu cuenta está en pausa. Habla con tu entrenador para que la reactive.
+          </p>
+          <button
+            onClick={signOut}
+            className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red"
+          >
+            Salir
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (role && profile.role !== role) {
     const fallback = profile.role === 'coach' ? '/coach' : '/atleta'
     return <Navigate to={fallback} replace />

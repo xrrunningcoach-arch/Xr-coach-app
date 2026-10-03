@@ -31,6 +31,9 @@ export default function CoachHome() {
   const [loading, setLoading] = useState(true)
   const [athletes, setAthletes] = useState([])
   const [pending, setPending] = useState([])
+  const [unread, setUnread] = useState({})
+  const [showArchived, setShowArchived] = useState(false)
+  const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -68,19 +71,79 @@ export default function CoachHome() {
     // Sesiones completadas sin evaluación del entrenador todavía
     const { data: sessions } = await supabase
       .from('sessions')
-      .select('*, training_plans(athlete_id, profiles:athlete_id(full_name,email))')
+      .select('*, training_plans(athlete_id, profiles:athlete_id(full_name,email,is_active))')
       .eq('status', 'completado')
       .order('completed_at', { ascending: false })
       .limit(30)
 
     const { data: evaluations } = await supabase.from('session_evaluations').select('session_id')
     const evaluatedIds = new Set((evaluations || []).map((e) => e.session_id))
-    setPending((sessions || []).filter((s) => !evaluatedIds.has(s.id)))
+    setPending(
+      (sessions || []).filter(
+        (s) => !evaluatedIds.has(s.id) && s.training_plans?.profiles?.is_active !== false
+      )
+    )
+
+    // Mensajes del chat que los atletas te han enviado y aún no has leído.
+    // Si todavía no se ha ejecutado la migración 0003, esta consulta falla y
+    // simplemente no se muestran avisos.
+    const { data: unreadRows } = await supabase
+      .from('messages')
+      .select('athlete_id, sender_id')
+      .is('read_at', null)
+    const counts = {}
+    ;(unreadRows || []).forEach((m) => {
+      if (m.sender_id === m.athlete_id) counts[m.athlete_id] = (counts[m.athlete_id] || 0) + 1
+    })
+    setUnread(counts)
 
     setLoading(false)
   }
 
+  async function handleArchive(a) {
+    const name = a.full_name || a.email
+    if (
+      !confirm(
+        `¿Archivar a ${name}?\n\nDejará de aparecer en tu lista y no podrá entrar en la app. Su historial (plan, sesiones, tests, mensajes) se conserva y podrás reactivarlo cuando quieras.`
+      )
+    )
+      return
+    setBusyId(a.id)
+    const { error: err } = await supabase.rpc('set_athlete_active', { p_athlete_id: a.id, p_active: false })
+    setBusyId(null)
+    if (err) alert(err.message)
+    else loadData()
+  }
+
+  async function handleRestore(a) {
+    setBusyId(a.id)
+    const { error: err } = await supabase.rpc('set_athlete_active', { p_athlete_id: a.id, p_active: true })
+    setBusyId(null)
+    if (err) alert(err.message)
+    else loadData()
+  }
+
+  async function handleDelete(a) {
+    const name = a.full_name || a.email
+    if (
+      !confirm(
+        `¿Eliminar DEFINITIVAMENTE a ${name}?\n\nSe borrarán su cuenta, su plan, sus sesiones, tests y mensajes. Esta acción NO se puede deshacer.\n\nSi solo quieres dejar de verlo, es mejor mantenerlo archivado.`
+      )
+    )
+      return
+    const typed = prompt('Para confirmar el borrado, escribe ELIMINAR (en mayúsculas):')
+    if (typed !== 'ELIMINAR') return
+    setBusyId(a.id)
+    const { error: err } = await supabase.rpc('delete_athlete', { p_athlete_id: a.id })
+    setBusyId(null)
+    if (err) alert(err.message)
+    else loadData()
+  }
+
   if (loading) return <LoadingScreen />
+
+  const active = athletes.filter((a) => a.is_active !== false)
+  const archived = athletes.filter((a) => a.is_active === false)
 
   return (
     <div className="space-y-10">
@@ -120,24 +183,40 @@ export default function CoachHome() {
       </section>
 
       <section>
-        <h2 className="font-display text-lg text-navy mb-3">Tus atletas ({athletes.length})</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="font-display text-lg text-navy">Tus atletas ({active.length})</h2>
+          {archived.length > 0 && (
+            <button
+              onClick={() => setShowArchived((v) => !v)}
+              className="text-sm font-semibold text-slate hover:text-red"
+            >
+              {showArchived ? 'Ocultar archivados' : `Ver archivados (${archived.length})`}
+            </button>
+          )}
+        </div>
+
         <div className="bg-white border border-mist rounded-sm divide-y divide-mist">
-          {athletes.length === 0 && (
+          {active.length === 0 && (
             <p className="px-5 py-6 text-sm text-slate">
-              Todavía no hay atletas registrados. Cuando alguien se registre en la web, aparecerá aquí.
+              {athletes.length === 0
+                ? 'Todavía no hay atletas registrados. Cuando alguien se registre en la web, aparecerá aquí.'
+                : 'No tienes atletas activos. Puedes reactivar a alguno desde «Ver archivados».'}
             </p>
           )}
-          {athletes.map((a) => (
-            <Link
-              key={a.id}
-              to={`/coach/atleta/${a.id}`}
-              className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-bg-dim transition-colors"
-            >
-              <div>
-                <p className="font-semibold text-sm">{a.full_name || a.email}</p>
+          {active.map((a) => (
+            <div key={a.id} className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-bg-dim transition-colors">
+              <Link to={`/coach/atleta/${a.id}`} className="flex-1 min-w-[200px]">
+                <p className="font-semibold text-sm">
+                  {a.full_name || a.email}
+                  {unread[a.id] > 0 && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-red text-white">
+                      {unread[a.id]} {unread[a.id] === 1 ? 'mensaje nuevo' : 'mensajes nuevos'}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm text-slate">{a.email}</p>
-              </div>
-              <div className="text-right">
+              </Link>
+              <div className="flex items-center gap-4">
                 {a.plan ? (
                   <span className="font-mono text-xs text-navy-light">
                     Plan activo · {a.plan.races?.name || a.plan.custom_race_name} · {a.plan.duration_weeks} sem.
@@ -145,10 +224,49 @@ export default function CoachHome() {
                 ) : (
                   <span className="font-mono text-xs text-red">Sin plan asignado</span>
                 )}
+                <button
+                  onClick={() => handleArchive(a)}
+                  disabled={busyId === a.id}
+                  className="text-xs font-semibold text-slate hover:text-red border border-mist rounded-sm px-3 py-1.5 disabled:opacity-60"
+                >
+                  Archivar
+                </button>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
+
+        {showArchived && archived.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-display text-base text-slate mb-2">Archivados ({archived.length})</h3>
+            <div className="bg-white border border-mist rounded-sm divide-y divide-mist opacity-90">
+              {archived.map((a) => (
+                <div key={a.id} className="px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                  <Link to={`/coach/atleta/${a.id}`} className="flex-1 min-w-[200px]">
+                    <p className="font-semibold text-sm text-slate">{a.full_name || a.email}</p>
+                    <p className="text-sm text-slate">{a.email}</p>
+                  </Link>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleRestore(a)}
+                      disabled={busyId === a.id}
+                      className="text-xs font-semibold text-navy hover:text-red border border-mist rounded-sm px-3 py-1.5 disabled:opacity-60"
+                    >
+                      Reactivar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(a)}
+                      disabled={busyId === a.id}
+                      className="text-xs font-semibold text-red hover:text-red-deep border border-red/40 rounded-sm px-3 py-1.5 disabled:opacity-60"
+                    >
+                      Eliminar definitivamente
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   )

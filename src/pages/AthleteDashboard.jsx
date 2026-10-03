@@ -6,6 +6,8 @@ import { weeklyLoad, loadBarWidth } from '../lib/load'
 import StatusBadge from '../components/StatusBadge'
 import LoadingScreen from '../components/LoadingScreen'
 import DisciplineFields from '../components/DisciplineFields'
+import ZonesTable from '../components/ZonesTable'
+import { effectiveMaxHr } from '../lib/zones'
 
 export default function AthleteDashboard() {
   const { user } = useAuth()
@@ -414,38 +416,8 @@ function SessionRow({ session, discipline, evaluations, onUpdated }) {
 
 function HrZonesView({ hrZones }) {
   if (!hrZones) return <EmptyState text="Tu entrenador aún no ha configurado tus zonas de frecuencia cardíaca." />
-  const maxHr = hrZones.max_hr_real || (hrZones.age ? 220 - hrZones.age : null)
-  const zones = [
-    ['Z1 · Regenerativo', 0.5, 0.6],
-    ['Z2 · Aeróbico base', 0.6, 0.7],
-    ['Z3 · Tempo', 0.7, 0.8],
-    ['Z4 · Umbral', 0.8, 0.9],
-    ['Z5 · VO2 máx / series', 0.9, 1.0],
-  ]
-  return (
-    <div className="bg-white border border-mist rounded-sm overflow-x-auto">
-      <table className="w-full text-sm min-w-[520px]">
-        <thead className="bg-bg-dim">
-          <tr>
-            <th className="text-left px-4 py-3 font-mono text-xs text-slate">Zona</th>
-            <th className="text-left px-4 py-3 font-mono text-xs text-slate">% FC máx</th>
-            <th className="text-left px-4 py-3 font-mono text-xs text-slate">FC objetivo (ppm)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-mist">
-          {zones.map(([label, lo, hi]) => (
-            <tr key={label}>
-              <td className="px-4 py-3">{label}</td>
-              <td className="px-4 py-3 font-mono">{Math.round(lo * 100)}% - {Math.round(hi * 100)}%</td>
-              <td className="px-4 py-3 font-mono">
-                {maxHr ? `${Math.round(maxHr * lo)} - ${Math.round(maxHr * hi)}` : '—'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
+  const used = effectiveMaxHr({ maxHrReal: hrZones.max_hr_real, age: hrZones.age })
+  return <ZonesTable maxHr={used.value} sourceLabel={used.source} />
 }
 
 function MilestonesView({ milestones }) {

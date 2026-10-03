@@ -10,7 +10,10 @@ import StatusBadge from '../components/StatusBadge'
 import LoadingScreen from '../components/LoadingScreen'
 import DisciplineFields from '../components/DisciplineFields'
 import StrengthExercises from '../components/StrengthExercises'
-import AthleteProfileForm from './AthleteProfileForm'
+import AthleteSummary from '../components/AthleteSummary'
+import ChatPanel from '../components/ChatPanel'
+import ZonesTable from '../components/ZonesTable'
+import { effectiveMaxHr } from '../lib/zones'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
@@ -21,20 +24,23 @@ export default function CoachAthlete() {
   const [plan, setPlan] = useState(null)
   const [races, setRaces] = useState([])
   const [mesocycles, setMesocycles] = useState([])
+  const [macrocycles, setMacrocycles] = useState([])
   const [sessions, setSessions] = useState([])
   const [hrZones, setHrZones] = useState(null)
   const [milestones, setMilestones] = useState([])
   const [tests, setTests] = useState([])
   const [disciplines, setDisciplines] = useState([])
-  const [tab, setTab] = useState('plan')
+  const [tab, setTab] = useState('resumen')
 
   useEffect(() => {
     loadAll()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [athleteId])
 
-  async function loadAll() {
-    setLoading(true)
+  // silent = true: recarga los datos sin tapar la pantalla con "Cargando…"
+  // (lo usan los paneles nuevos para no perder lo que tienes desplegado).
+  async function loadAll(silent = false) {
+    if (silent !== true) setLoading(true)
 
     const { data: a } = await supabase.from('profiles').select('*').eq('id', athleteId).single()
     setAthlete(a)
@@ -55,20 +61,23 @@ export default function CoachAthlete() {
     setPlan(currentPlan)
 
     if (currentPlan) {
-      const [{ data: meso }, { data: sess }, { data: hz }, { data: ms }, { data: tst }] = await Promise.all([
+      const [{ data: meso }, { data: sess }, { data: hz }, { data: ms }, { data: tst }, { data: macros }] = await Promise.all([
         supabase.from('mesocycles').select('*').eq('plan_id', currentPlan.id).order('order_index'),
         supabase.from('sessions').select('*').eq('plan_id', currentPlan.id).order('week_number').order('day_number'),
         supabase.from('hr_zones').select('*').eq('plan_id', currentPlan.id).maybeSingle(),
         supabase.from('milestones').select('*').eq('plan_id', currentPlan.id).order('event_date'),
         supabase.from('tests').select('*').eq('plan_id', currentPlan.id).order('test_date'),
+        supabase.from('macrocycles').select('*').eq('plan_id', currentPlan.id).order('order_index'),
       ])
       setMesocycles(meso || [])
+      setMacrocycles(macros || [])
       setSessions(sess || [])
       setHrZones(hz || null)
       setMilestones(ms || [])
       setTests(tst || [])
     } else {
       setMesocycles([])
+      setMacrocycles([])
       setSessions([])
       setHrZones(null)
       setMilestones([])
@@ -87,15 +96,21 @@ export default function CoachAthlete() {
         <Link to="/coach" className="text-sm text-slate hover:text-navy">← Volver al panel</Link>
         <h1 className="font-display text-2xl text-navy mt-2">{athlete.full_name || athlete.email}</h1>
         <p className="text-sm text-slate">{athlete.email}</p>
+        {athlete.is_active === false && (
+          <p className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-red/15 text-red-deep">
+            Atleta archivado · no puede entrar en la app
+          </p>
+        )}
       </div>
 
       <div className="flex gap-2 border-b border-mist overflow-x-auto">
         {[
+          ['resumen', 'Perfil y mesociclos'],
           ['plan', 'Plan y sesiones'],
-          ['perfil', 'Perfil / anamnesis'],
           ['zonas', 'Zonas de FC'],
           ['calendario', 'Calendario'],
           ['tests', 'Test y marcas'],
+          ['chat', 'Chat'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -109,7 +124,18 @@ export default function CoachAthlete() {
         ))}
       </div>
 
-      {tab === 'perfil' && <AthleteProfileForm profileId={athlete.id} basicProfile={athlete} />}
+      {tab === 'resumen' && (
+        <AthleteSummary
+          athlete={athlete}
+          plan={plan}
+          macrocycles={macrocycles}
+          mesocycles={mesocycles}
+          sessions={sessions}
+          disciplines={disciplines}
+          onReload={loadAll}
+          onGoToPlan={() => setTab('plan')}
+        />
+      )}
 
       {tab === 'plan' &&
         (plan ? (
@@ -130,9 +156,10 @@ export default function CoachAthlete() {
           />
         ))}
 
-      {tab === 'zonas' && plan && <HrZonesEditor planId={plan.id} hrZones={hrZones} onSaved={loadAll} />}
+      {tab === 'zonas' && plan && <HrZonesEditor planId={plan.id} hrZones={hrZones} athleteAge={athlete.age} onSaved={loadAll} />}
       {tab === 'calendario' && plan && <MilestonesEditor planId={plan.id} milestones={milestones} onChanged={loadAll} />}
       {tab === 'tests' && plan && <TestsEditor planId={plan.id} tests={tests} onChanged={loadAll} />}
+      {tab === 'chat' && <ChatPanel athleteId={athlete.id} otherName={athlete.full_name || athlete.email} />}
 
       {(tab === 'zonas' || tab === 'calendario' || tab === 'tests') && !plan && (
         <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
@@ -186,9 +213,23 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 
     const { mesocycles, sessions } = generatePlanSkeleton(Number(duration))
 
+    // Todo plan nuevo nace con un "Macrociclo 1" que agrupa sus mesociclos;
+    // luego puedes añadir más macrociclos desde la pestaña "Perfil y mesociclos".
+    const { data: macro, error: macroErr } = await supabase
+      .from('macrocycles')
+      .insert({ plan_id: plan.id, order_index: 1, name: 'Macrociclo 1' })
+      .select()
+      .single()
+
+    if (macroErr) {
+      setError(macroErr.message)
+      setSaving(false)
+      return
+    }
+
     const { data: insertedMeso, error: mesoErr } = await supabase
       .from('mesocycles')
-      .insert(mesocycles.map((m) => ({ ...m, plan_id: plan.id })))
+      .insert(mesocycles.map((m) => ({ ...m, plan_id: plan.id, macrocycle_id: macro.id })))
       .select()
 
     if (mesoErr) {
@@ -698,11 +739,14 @@ function EvaluationBox({ sessionId, evaluations, onAdded }) {
 // ----------------------------------------------------------------------------
 // ZONAS DE FC
 // ----------------------------------------------------------------------------
-function HrZonesEditor({ planId, hrZones, onSaved }) {
-  const [age, setAge] = useState(hrZones?.age ?? '')
+function HrZonesEditor({ planId, hrZones, athleteAge, onSaved }) {
+  const [age, setAge] = useState(hrZones?.age ?? athleteAge ?? '')
   const [maxHr, setMaxHr] = useState(hrZones?.max_hr_real ?? '')
   const [restingHr, setRestingHr] = useState(hrZones?.resting_hr ?? '')
   const [saving, setSaving] = useState(false)
+
+  // Los números de la tabla se recalculan al escribir, sin esperar a guardar.
+  const used = effectiveMaxHr({ maxHrReal: maxHr, age })
 
   async function handleSave(e) {
     e.preventDefault()
@@ -719,27 +763,41 @@ function HrZonesEditor({ planId, hrZones, onSaved }) {
   }
 
   return (
-    <form onSubmit={handleSave} className="bg-white border border-mist rounded-sm p-6 space-y-4 max-w-lg">
-      <h2 className="font-display text-xl text-navy">Zonas de frecuencia cardíaca</h2>
-      <div className="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Edad</label>
-          <input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
+    <div className="space-y-6">
+      <form onSubmit={handleSave} className="bg-white border border-mist rounded-sm p-6 space-y-4 max-w-2xl">
+        <h2 className="font-display text-xl text-navy">Datos base (rellenar con test de campo real)</h2>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block font-mono text-xs text-slate mb-1.5">Edad</label>
+            <input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
+          </div>
+          <div>
+            <label className="block font-mono text-xs text-slate mb-1.5">FC máxima real (test de campo)</label>
+            <input type="number" value={maxHr} onChange={(e) => setMaxHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
+          </div>
+          <div>
+            <label className="block font-mono text-xs text-slate mb-1.5">FC de reposo (en ayunas)</label>
+            <input type="number" value={restingHr} onChange={(e) => setRestingHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
+          </div>
         </div>
-        <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">FC máx. real</label>
-          <input type="number" value={maxHr} onChange={(e) => setMaxHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
+        <div className="text-sm text-slate space-y-1">
+          <p>
+            FC máxima estimada (220 - edad):{' '}
+            <span className="font-mono text-navy">{used.estimated ? `${used.estimated} ppm` : '—'}</span>
+          </p>
+          <p>
+            FC máxima usada en las zonas:{' '}
+            <span className="font-mono text-navy">{used.value ? `${used.value} ppm (${used.source})` : '—'}</span>
+          </p>
+          <p className="text-xs">Si no tienes FC máxima real, se usa la estimada (220 - edad) en los cálculos.</p>
         </div>
-        <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">FC de reposo</label>
-          <input type="number" value={restingHr} onChange={(e) => setRestingHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
-        </div>
-      </div>
-      <p className="text-xs text-slate">Si no rellenas la FC máxima real, el atleta verá las zonas calculadas como 220 - edad.</p>
-      <button type="submit" disabled={saving} className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
-        {saving ? 'Guardando…' : 'Guardar zonas'}
-      </button>
-    </form>
+        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+          {saving ? 'Guardando…' : 'Guardar zonas'}
+        </button>
+      </form>
+
+      <ZonesTable maxHr={used.value} sourceLabel={used.source} />
+    </div>
   )
 }
 

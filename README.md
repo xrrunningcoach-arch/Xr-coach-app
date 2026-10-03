@@ -134,3 +134,17 @@ src/components/            Layout, rutas protegidas, badges de estado
   instante.
 - Este repositorio no incluye recuperación de contraseña ni edición de email; se
   puede añadir más adelante con `supabase.auth.resetPasswordForEmail`.
+
+---
+
+## Novedades de la versión 2
+
+Antes de subir estos archivos a GitHub, ejecuta una vez en Supabase (SQL Editor) el archivo
+`supabase/migrations/0003_atletas_macrociclos_chat.sql`.
+
+- **Archivar / reactivar / eliminar atletas** desde el panel del entrenador.
+- **Pestaña "Perfil y mesociclos"** en la ficha de cada atleta: perfil (como el Excel), anamnesis de 21
+  preguntas, escala RPE, gráfico de semanas y volumen, y macrociclos > mesociclos > semanas > sesiones con
+  semáforo rojo / ámbar / verde editable a mano.
+- **Zonas de entrenamiento (% FC máxima)** con códigos Z1 a Z5, FC objetivo en ppm y equivalencia RPE.
+- **Chat** entre cada atleta y el entrenador.
