@@ -156,6 +156,7 @@ export default function AthleteSummary({
   disciplines,
   onReload,
   onGoToPlan,
+  onSaveToLibrary,
 }) {
   return (
     <div className="grid lg:grid-cols-2 gap-6 items-start">
@@ -182,6 +183,7 @@ export default function AthleteSummary({
             disciplines={disciplines}
             onReload={onReload}
             onGoToPlan={onGoToPlan}
+            onSaveToLibrary={onSaveToLibrary}
           />
         ) : (
           <Card title="Macrociclos y mesociclos">

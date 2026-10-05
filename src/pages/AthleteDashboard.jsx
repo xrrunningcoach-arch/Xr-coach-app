@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
-import { fetchDisciplines, findDiscipline } from '../lib/disciplines'
-import { weeklyLoad, loadBarWidth } from '../lib/load'
-import StatusBadge from '../components/StatusBadge'
+import { fetchDisciplines } from '../lib/disciplines'
 import LoadingScreen from '../components/LoadingScreen'
-import DisciplineFields from '../components/DisciplineFields'
 import ZonesTable from '../components/ZonesTable'
-import { effectiveMaxHr } from '../lib/zones'
+import AthleteCalendar from '../components/AthleteCalendar'
+import StatsDashboard from '../components/StatsDashboard'
+import GoalsView from '../components/GoalsView'
+import useToday from '../components/calendar/useToday'
+import { sessionKm } from '../lib/stats'
+import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
 
-export default function AthleteDashboard() {
+// Datos del plan del atleta. La navegación entre secciones vive ahora en el
+// panel lateral (AthleteHome); este componente recibe la sección activa y
+// pinta su contenido. Las tarjetas de sesión (SessionCard) no han cambiado.
+export default function AthleteDashboard({ section = 'calendario', onNavigate }) {
   const { user } = useAuth()
+  const today = useToday()
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState(null)
   const [race, setRace] = useState(null)
@@ -18,10 +24,11 @@ export default function AthleteDashboard() {
   const [sessions, setSessions] = useState([])
   const [milestones, setMilestones] = useState([])
   const [hrZones, setHrZones] = useState(null)
+  const [manualZones, setManualZones] = useState({})
+  const [athleteProfile, setAthleteProfile] = useState(null)
   const [tests, setTests] = useState([])
   const [evaluationsBySession, setEvaluationsBySession] = useState({})
   const [disciplines, setDisciplines] = useState([])
-  const [activeTab, setActiveTab] = useState('sesiones')
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -29,12 +36,30 @@ export default function AthleteDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  async function loadData() {
+  // Al entrar en «Objetivos!» se refrescan los datos: así se ven al instante
+  // las metas que se acaban de editar en «Mi perfil».
+  useEffect(() => {
+    if (section === 'objetivos') loadData(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section])
+
+  // silent = true: recarga sin tapar la pantalla (así no se pierde el mes o
+  // la semana que estás mirando ni el formulario abierto).
+  async function loadData(silent = false) {
     if (!user) return
-    setLoading(true)
+    if (silent !== true) setLoading(true)
     setError(null)
 
     if (disciplines.length === 0) setDisciplines(await fetchDisciplines())
+
+    // Zonas manuales y perfil: no dependen del plan (si aún no existen las
+    // tablas de la migración 0004, simplemente quedan vacías).
+    const [{ data: manual }, { data: profileRow }] = await Promise.all([
+      supabase.from('athlete_hr_zones').select('manual_zones').eq('athlete_id', user.id).maybeSingle(),
+      supabase.from('athlete_profiles').select('*').eq('profile_id', user.id).maybeSingle(),
+    ])
+    setManualZones(sanitizeManualZones(manual?.manual_zones))
+    setAthleteProfile(profileRow || null)
 
     const { data: plans, error: planErr } = await supabase
       .from('training_plans')
@@ -89,34 +114,21 @@ export default function AthleteDashboard() {
     setLoading(false)
   }
 
-  const weeks = useMemo(() => {
-    const byWeek = {}
-    sessions.forEach((s) => {
-      if (!byWeek[s.week_number]) byWeek[s.week_number] = []
-      byWeek[s.week_number].push(s)
-    })
-    return Object.entries(byWeek)
-      .map(([week, items]) => ({ week: Number(week), items }))
-      .sort((a, b) => a.week - b.week)
-  }, [sessions])
-
   const progress = useMemo(() => {
-    const totalKm = sessions.reduce((sum, s) => sum + (Number(s.km_estimated) || 0), 0)
+    const totalKm = sessions.reduce((sum, s) => sum + sessionKm(s), 0)
     const doneKm = sessions
       .filter((s) => s.status === 'completado')
-      .reduce((sum, s) => sum + (Number(s.km_estimated) || 0), 0)
+      .reduce((sum, s) => sum + sessionKm(s), 0)
     const totalSessions = sessions.length
     const doneSessions = sessions.filter((s) => s.status === 'completado').length
     return { totalKm, doneKm, totalSessions, doneSessions }
   }, [sessions])
 
-  const loadByWeek = useMemo(() => weeklyLoad(sessions), [sessions])
-  const maxLoad = Math.max(1, ...loadByWeek.map((w) => w.load))
-  const maxImpact = Math.max(1, ...loadByWeek.map((w) => w.impactLoad))
-
   if (loading) return <LoadingScreen />
 
-  if (!plan) {
+  const hasManualZones = Object.keys(manualZones).length > 0
+
+  if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones)) {
     return (
       <div className="bg-white border border-mist rounded-sm p-8 text-center">
         <h2 className="font-display text-xl text-navy mb-2">Todavía no tienes un plan asignado</h2>
@@ -129,55 +141,51 @@ export default function AthleteDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="bg-navy-deep text-white rounded-sm p-6 sm:p-8">
-        <p className="font-mono text-xs text-red mb-2">
-          {race?.name || plan.custom_race_name || 'Plan personalizado'}
-        </p>
-        <h1 className="font-display text-2xl sm:text-3xl mb-3">Tu plan de entrenamiento</h1>
-        <div className="grid sm:grid-cols-4 gap-4 mt-6 text-sm">
-          <Stat label="Duración" value={`${plan.duration_weeks} semanas`} />
-          <Stat label="Ritmo objetivo" value={plan.target_pace || '—'} />
-          <Stat label="Km completados" value={`${progress.doneKm.toFixed(1)} / ${progress.totalKm.toFixed(1)}`} />
-          <Stat label="Sesiones completadas" value={`${progress.doneSessions} / ${progress.totalSessions}`} />
-        </div>
-      </div>
-
-      {error && <p className="text-red text-sm">{error}</p>}
-
-      <Tabs active={activeTab} onChange={setActiveTab} />
-
-      {activeTab === 'sesiones' && (
-        <div className="space-y-6">
-          {weeks.map(({ week, items }) => {
-            const meso = mesocycles.find((m) => week >= m.week_start && week <= m.week_end)
-            const weekLoad = loadByWeek.find((w) => w.week === week)
-            return (
-              <div key={week} className="bg-white border border-mist rounded-sm overflow-hidden">
-                <div className="bg-bg-dim px-5 py-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-display text-lg text-navy">Semana {week}</h3>
-                  {meso && <span className="font-mono text-[11px] text-slate">{meso.name}</span>}
-                </div>
-                <WeekLoadBars weekLoad={weekLoad} maxLoad={maxLoad} maxImpact={maxImpact} />
-                <div className="divide-y divide-mist">
-                  {items.map((s) => (
-                    <SessionRow
-                      key={s.id}
-                      session={s}
-                      discipline={findDiscipline(disciplines, s.discipline_id)}
-                      evaluations={evaluationsBySession[s.id] || []}
-                      onUpdated={loadData}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+      {plan && (section === 'calendario' || section === 'estadisticas') && (
+        <div className="bg-navy-deep text-white rounded-sm p-6 sm:p-8">
+          <p className="font-mono text-xs text-red mb-2">
+            {race?.name || plan.custom_race_name || 'Plan personalizado'}
+          </p>
+          <h1 className="font-display text-2xl sm:text-3xl mb-3">Tu plan de entrenamiento</h1>
+          <div className="grid sm:grid-cols-4 gap-4 mt-6 text-sm">
+            <Stat label="Duración" value={`${plan.duration_weeks} semanas`} />
+            <Stat label="Ritmo objetivo" value={plan.target_pace || '—'} />
+            <Stat label="Km completados" value={`${progress.doneKm.toFixed(1)} / ${progress.totalKm.toFixed(1)}`} />
+            <Stat label="Sesiones completadas" value={`${progress.doneSessions} / ${progress.totalSessions}`} />
+          </div>
         </div>
       )}
 
-      {activeTab === 'zonas' && <HrZonesView hrZones={hrZones} />}
-      {activeTab === 'calendario' && <MilestonesView milestones={milestones} />}
-      {activeTab === 'tests' && <TestsView tests={tests} />}
+      {error && <p className="text-red text-sm">{error}</p>}
+
+      {section === 'calendario' && (
+        <AthleteCalendar
+          plan={plan}
+          sessions={sessions}
+          mesocycles={mesocycles}
+          disciplines={disciplines}
+          evaluationsBySession={evaluationsBySession}
+          milestones={milestones}
+          onUpdated={() => loadData(true)}
+        />
+      )}
+
+      {section === 'estadisticas' && <StatsDashboard sessions={sessions} disciplines={disciplines} />}
+
+      {section === 'zonas' && <HrZonesView hrZones={hrZones} manualZones={manualZones} />}
+
+      {section === 'objetivos' && (
+        <GoalsView
+          plan={plan}
+          race={race}
+          milestones={milestones}
+          athleteProfile={athleteProfile}
+          today={today}
+          onGoToProfile={onNavigate ? () => onNavigate('perfil') : undefined}
+        />
+      )}
+
+      {section === 'tests' && <TestsView tests={tests} />}
     </div>
   )
 }
@@ -191,252 +199,11 @@ function Stat({ label, value }) {
   )
 }
 
-function Tabs({ active, onChange }) {
-  const tabs = [
-    { id: 'sesiones', label: 'Sesiones' },
-    { id: 'zonas', label: 'Zonas de FC' },
-    { id: 'calendario', label: 'Calendario' },
-    { id: 'tests', label: 'Test y marcas' },
-  ]
-  return (
-    <div className="flex gap-2 border-b border-mist overflow-x-auto">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
-            active === t.id ? 'border-red text-red' : 'border-transparent text-slate hover:text-navy'
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// Misma pareja de barras que en el panel del coach: carga total (session-RPE)
-// y carga de impacto, para que el atleta vea también si una semana mezclando
-// deportes se le está acumulando, no solo el coach.
-function WeekLoadBars({ weekLoad, maxLoad, maxImpact }) {
-  if (!weekLoad || weekLoad.loggedSessions === 0) {
-    return (
-      <div className="px-5 py-2 text-xs text-slate italic border-b border-mist">
-        Carga de la semana: sin sesiones registradas todavía.
-      </div>
-    )
-  }
-  return (
-    <div className="px-5 py-3 border-b border-mist space-y-1.5">
-      <LoadBar label="Carga total" value={weekLoad.load} max={maxLoad} colorClass="bg-navy" />
-      <LoadBar label="Carga de impacto" value={weekLoad.impactLoad} max={maxImpact} colorClass="bg-red" />
-    </div>
-  )
-}
-
-function LoadBar({ label, value, max, colorClass }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-[11px] text-slate w-28 shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-mist rounded-full overflow-hidden">
-        <div className={`h-full ${colorClass}`} style={{ width: `${loadBarWidth(value, max)}%` }} />
-      </div>
-      <span className="font-mono text-[11px] text-navy-light w-12 text-right shrink-0">{Math.round(value)}</span>
-    </div>
-  )
-}
-
-function SessionRow({ session, discipline, evaluations, onUpdated }) {
-  const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState(session.status)
-  const [rpeActual, setRpeActual] = useState(session.rpe_actual || '')
-  const [rpeValue, setRpeValue] = useState(session.rpe_actual_value ?? '')
-  const [durationActual, setDurationActual] = useState(session.duration_actual_min ?? '')
-  const [notes, setNotes] = useState(session.athlete_notes || '')
-  const [link, setLink] = useState(session.link_url || '')
-  const [metrics, setMetrics] = useState({})
-  const [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    setSaving(true)
-    const { error } = await supabase.rpc('submit_session', {
-      p_session_id: session.id,
-      p_status: status,
-      p_rpe_actual: rpeActual,
-      p_notes: notes,
-      p_link_url: link,
-      p_duration_actual_min: durationActual === '' ? null : Number(durationActual),
-      p_rpe_actual_value: rpeValue === '' ? null : Number(rpeValue),
-      p_metrics: metrics,
-    })
-    setSaving(false)
-    if (error) {
-      alert('Error al guardar: ' + error.message)
-      return
-    }
-    setOpen(false)
-    onUpdated()
-  }
-
-  return (
-    <div className="px-5 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex-1 min-w-[220px]">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="font-mono text-xs text-slate">Día {session.day_number}</span>
-            {discipline && (
-              <span className="font-mono text-[11px] uppercase text-navy-light border border-mist rounded-full px-2 py-0.5">
-                {discipline.name}
-              </span>
-            )}
-            <StatusBadge status={session.status} />
-          </div>
-          <p className="font-semibold text-sm">{session.session_type || 'Sesión'}</p>
-          <p className="text-sm text-slate mt-0.5">{session.description || 'El entrenador aún no ha detallado esta sesión.'}</p>
-          <p className="font-mono text-xs text-navy-light mt-1">
-            {session.km_estimated ? `${session.km_estimated} km` : ''}
-            {session.duration_planned_min ? ` · ${session.duration_planned_min} min previstos` : ''}
-            {session.rpe_theoretical ? ` · ${session.rpe_theoretical} (teórico)` : ''}
-          </p>
-          {discipline && <DisciplineFields discipline={discipline} values={session.metrics} readOnly />}
-        </div>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="px-3 py-1.5 text-sm border border-navy text-navy rounded-sm hover:bg-navy hover:text-white transition-colors"
-        >
-          {open ? 'Cerrar' : 'Registrar'}
-        </button>
-      </div>
-
-      {evaluations.length > 0 && (
-        <div className="mt-3 space-y-2">
-          {evaluations.map((ev) => (
-            <div key={ev.id} className="bg-bg-dim rounded-sm px-3 py-2">
-              <span className="font-mono text-xs text-navy-light" aria-label={`Valoración: ${ev.rating} de 5`}>
-                {'★'.repeat(ev.rating)}
-                {'☆'.repeat(5 - ev.rating)}
-              </span>
-              {ev.comment && <p className="text-sm text-slate mt-0.5">{ev.comment}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {open && (
-        <div className="mt-4 bg-bg-dim rounded-sm p-4 space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">Estado</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-white"
-              >
-                <option value="pendiente">Pendiente</option>
-                <option value="completado">Completado</option>
-                <option value="saltado">Saltado</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">RPE real (nota)</label>
-              <input
-                value={rpeActual}
-                onChange={(e) => setRpeActual(e.target.value)}
-                placeholder="Ej. RPE 6 fuerte"
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-white"
-              />
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">Duración real (min)</label>
-              <input
-                type="number"
-                min={0}
-                max={720}
-                value={durationActual}
-                onChange={(e) => setDurationActual(e.target.value)}
-                placeholder="Ej. 55"
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">RPE (0-10, para la carga)</label>
-              <select
-                value={rpeValue}
-                onChange={(e) => setRpeValue(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-white"
-              >
-                <option value="">Sin valorar</option>
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {discipline && (
-            <div>
-              <p className="font-mono text-xs text-slate mb-1">Datos de la sesión ({discipline.name})</p>
-              <DisciplineFields discipline={discipline} values={metrics} onChange={setMetrics} />
-            </div>
-          )}
-
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1">Notas / sensaciones</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="w-full border border-mist rounded-sm px-3 py-2 bg-white resize-none"
-            />
-          </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1">Enlace (Strava / Garmin / otro)</label>
-            <input
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              placeholder="https://..."
-              className="w-full border border-mist rounded-sm px-3 py-2 bg-white"
-            />
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
-          >
-            {saving ? 'Guardando…' : 'Guardar entrenamiento'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function HrZonesView({ hrZones }) {
-  if (!hrZones) return <EmptyState text="Tu entrenador aún no ha configurado tus zonas de frecuencia cardíaca." />
-  const used = effectiveMaxHr({ maxHrReal: hrZones.max_hr_real, age: hrZones.age })
-  return <ZonesTable maxHr={used.value} sourceLabel={used.source} />
-}
-
-function MilestonesView({ milestones }) {
-  if (!milestones.length) return <EmptyState text="Aún no hay hitos registrados en el calendario." />
-  return (
-    <div className="bg-white border border-mist rounded-sm divide-y divide-mist">
-      {milestones.map((m) => (
-        <div key={m.id} className="px-5 py-4 flex items-start justify-between gap-4">
-          <div>
-            <p className="font-semibold text-sm">{m.title}</p>
-            <p className="text-sm text-slate">{m.notes}</p>
-          </div>
-          <div className="text-right font-mono text-xs text-navy-light shrink-0">
-            {m.event_date} <br /> {m.week_ref}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+function HrZonesView({ hrZones, manualZones }) {
+  const hasManual = Object.keys(manualZones).length > 0
+  if (!hrZones && !hasManual) return <EmptyState text="Tu entrenador aún no ha configurado tus zonas de frecuencia cardíaca." />
+  const used = hrZones ? effectiveMaxHr({ maxHrReal: hrZones.max_hr_real, age: hrZones.age }) : { value: null, source: null }
+  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} />
 }
 
 function TestsView({ tests }) {

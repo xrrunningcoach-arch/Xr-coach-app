@@ -9,6 +9,7 @@ import Signup from './pages/Signup'
 import AthleteHome from './pages/AthleteHome'
 import CoachHome from './pages/CoachHome'
 import CoachAthlete from './pages/CoachAthlete'
+import CoachLibrary from './pages/CoachLibrary'
 
 function RoleRedirect() {
   const { profile, loading } = useAuth()
@@ -30,7 +31,7 @@ export default function App() {
             path="/atleta"
             element={
               <ProtectedRoute role="athlete">
-                <Layout><AthleteHome /></Layout>
+                <Layout wide><AthleteHome /></Layout>
               </ProtectedRoute>
             }
           />
@@ -45,10 +46,19 @@ export default function App() {
           />
 
           <Route
+            path="/coach/biblioteca"
+            element={
+              <ProtectedRoute role="coach">
+                <Layout wide><CoachLibrary /></Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/coach/atleta/:athleteId"
             element={
               <ProtectedRoute role="coach">
-                <Layout><CoachAthlete /></Layout>
+                <Layout wide><CoachAthlete /></Layout>
               </ProtectedRoute>
             }
           />

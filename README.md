@@ -148,3 +148,17 @@ Antes de subir estos archivos a GitHub, ejecuta una vez en Supabase (SQL Editor)
   semáforo rojo / ámbar / verde editable a mano.
 - **Zonas de entrenamiento (% FC máxima)** con códigos Z1 a Z5, FC objetivo en ppm y equivalencia RPE.
 - **Chat** entre cada atleta y el entrenador.
+
+
+---
+
+## Novedades de la versión 3
+
+Antes de subir estos archivos, ejecuta en Supabase (SQL Editor) `supabase/migrations/0004_calendario_biblioteca_zonas.sql`.
+
+- **Atleta:** panel lateral colapsable, **calendario dinámico** (semana/mes, sincronizado con la fecha actual),
+  sección **Estadísticas** (km por disciplina, tiempo semanal, desnivel acumulado) y «Calendario» renombrado a **Objetivos!**.
+- **Entrenador:** fechas de inicio/fin en macro y mesociclos enlazadas al calendario, calendario del atleta editable
+  (crear, arrastrar, importar), **Biblioteca** de plantillas (sesiones, planes, proyectos) y **zonas de FC manuales** por atleta.
+
+Detalle completo, cómo ejecutarlo y limitaciones: [`docs/GUIA_v3.md`](docs/GUIA_v3.md).

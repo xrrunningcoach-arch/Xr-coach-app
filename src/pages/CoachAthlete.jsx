@@ -13,7 +13,15 @@ import StrengthExercises from '../components/StrengthExercises'
 import AthleteSummary from '../components/AthleteSummary'
 import ChatPanel from '../components/ChatPanel'
 import ZonesTable from '../components/ZonesTable'
-import { effectiveMaxHr } from '../lib/zones'
+import CoachCalendar from '../components/CoachCalendar'
+import SaveToLibraryModal from '../components/library/SaveToLibraryModal'
+import { dateForWeekday } from '../lib/dates'
+import { cycleDatesFromWeeks } from '../lib/cycles'
+import { fetchExercisesBySession } from '../lib/templatesApi'
+import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../lib/templates'
+import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
+import HrZonesManual from '../components/HrZonesManual'
+import CoachSessionRow from '../components/CoachSessionRow'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
@@ -27,10 +35,12 @@ export default function CoachAthlete() {
   const [macrocycles, setMacrocycles] = useState([])
   const [sessions, setSessions] = useState([])
   const [hrZones, setHrZones] = useState(null)
+  const [manualZones, setManualZones] = useState({})
   const [milestones, setMilestones] = useState([])
   const [tests, setTests] = useState([])
   const [disciplines, setDisciplines] = useState([])
   const [tab, setTab] = useState('resumen')
+  const [libraryDraft, setLibraryDraft] = useState(null) // { kind, defaultName, payload }
 
   useEffect(() => {
     loadAll()
@@ -49,6 +59,11 @@ export default function CoachAthlete() {
     setRaces(raceList || [])
 
     setDisciplines(await fetchDisciplines())
+
+    // Zonas de FC manuales de este atleta (migración 0004). Si la migración
+    // aún no se ha ejecutado, la consulta falla y simplemente queda vacío.
+    const { data: manual } = await supabase.from('athlete_hr_zones').select('manual_zones').eq('athlete_id', athleteId).maybeSingle()
+    setManualZones(sanitizeManualZones(manual?.manual_zones))
 
     const { data: plans } = await supabase
       .from('training_plans')
@@ -87,6 +102,30 @@ export default function CoachAthlete() {
     setLoading(false)
   }
 
+  // «Guardar en la biblioteca»: convierte lo seleccionado en plantilla sin atleta.
+  async function saveToLibrary(kind, entity) {
+    try {
+      if (kind === 'session') {
+        const ex = await fetchExercisesBySession([entity.id])
+        setLibraryDraft({
+          kind,
+          defaultName: entity.session_type || 'Sesión',
+          payload: serializeSession(entity, disciplines, ex[entity.id] || []),
+        })
+      } else if (kind === 'mesocycle') {
+        const mine = sessions.filter((x) => x.mesocycle_id === entity.id || (x.week_number >= entity.week_start && x.week_number <= entity.week_end))
+        const ex = await fetchExercisesBySession(mine.map((x) => x.id))
+        setLibraryDraft({ kind, defaultName: entity.name, payload: serializeMesocycle(entity, sessions, disciplines, ex) })
+      } else {
+        const mesos = mesocycles.filter((m) => m.macrocycle_id === entity.id)
+        const ex = await fetchExercisesBySession(sessions.map((x) => x.id))
+        setLibraryDraft({ kind, defaultName: entity.name, payload: serializeMacrocycle(entity, mesos, sessions, disciplines, ex) })
+      }
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
   if (loading) return <LoadingScreen />
   if (!athlete) return <p className="text-red">No se ha encontrado este atleta.</p>
 
@@ -107,8 +146,9 @@ export default function CoachAthlete() {
         {[
           ['resumen', 'Perfil y mesociclos'],
           ['plan', 'Plan y sesiones'],
-          ['zonas', 'Zonas de FC'],
           ['calendario', 'Calendario'],
+          ['zonas', 'Zonas de FC'],
+          ['objetivos', 'Objetivos!'],
           ['tests', 'Test y marcas'],
           ['chat', 'Chat'],
         ].map(([id, label]) => (
@@ -134,6 +174,7 @@ export default function CoachAthlete() {
           disciplines={disciplines}
           onReload={loadAll}
           onGoToPlan={() => setTab('plan')}
+          onSaveToLibrary={saveToLibrary}
         />
       )}
 
@@ -145,6 +186,7 @@ export default function CoachAthlete() {
             sessions={sessions}
             disciplines={disciplines}
             onReload={loadAll}
+            onSaveToLibrary={saveToLibrary}
           />
         ) : (
           <PlanBuilder
@@ -156,13 +198,47 @@ export default function CoachAthlete() {
           />
         ))}
 
-      {tab === 'zonas' && plan && <HrZonesEditor planId={plan.id} hrZones={hrZones} athleteAge={athlete.age} onSaved={loadAll} />}
-      {tab === 'calendario' && plan && <MilestonesEditor planId={plan.id} milestones={milestones} onChanged={loadAll} />}
+      {tab === 'zonas' && plan && (
+        <HrZonesEditor
+          planId={plan.id}
+          athleteId={athlete.id}
+          coachId={user.id}
+          hrZones={hrZones}
+          manualZones={manualZones}
+          athleteAge={athlete.age}
+          onSaved={() => loadAll(true)}
+        />
+      )}
+      {tab === 'calendario' && plan && (
+        <CoachCalendar
+          athlete={athlete}
+          plan={plan}
+          sessions={sessions}
+          mesocycles={mesocycles}
+          disciplines={disciplines}
+          milestones={milestones}
+          onReload={loadAll}
+          onSaveSessionToLibrary={(session) => saveToLibrary('session', session)}
+        />
+      )}
+      {tab === 'objetivos' && plan && <MilestonesEditor planId={plan.id} milestones={milestones} onChanged={loadAll} />}
       {tab === 'tests' && plan && <TestsEditor planId={plan.id} tests={tests} onChanged={loadAll} />}
       {tab === 'chat' && <ChatPanel athleteId={athlete.id} otherName={athlete.full_name || athlete.email} />}
 
-      {(tab === 'zonas' || tab === 'calendario' || tab === 'tests') && !plan && (
+      {(tab === 'zonas' || tab === 'objetivos' || tab === 'tests') && !plan && (
         <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
+      )}
+      {tab === 'calendario' && !plan && (
+        <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
+      )}
+
+      {libraryDraft && (
+        <SaveToLibraryModal
+          kind={libraryDraft.kind}
+          defaultName={libraryDraft.defaultName}
+          payload={libraryDraft.payload}
+          onClose={() => setLibraryDraft(null)}
+        />
       )}
     </div>
   )
@@ -229,7 +305,14 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 
     const { data: insertedMeso, error: mesoErr } = await supabase
       .from('mesocycles')
-      .insert(mesocycles.map((m) => ({ ...m, plan_id: plan.id, macrocycle_id: macro.id })))
+      .insert(
+        mesocycles.map((m) => ({
+          ...m,
+          plan_id: plan.id,
+          macrocycle_id: macro.id,
+          ...cycleDatesFromWeeks(startDate, m.week_start, m.week_end),
+        }))
+      )
       .select()
 
     if (mesoErr) {
@@ -245,11 +328,15 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
     // disciplina fila a fila cuando la semana combina deportes.
     const runningId = disciplines.find((d) => d.code === 'running')?.id || null
 
+    // Con fecha de inicio, cada sesión nace colocada en su día del calendario:
+    // «Día N» = día N de la semana (Día 1 = lunes). El entrenador puede
+    // arrastrarlas a otro día desde la pestaña Calendario.
     const sessionsPayload = sessions.map(({ mesocycle_order, ...s }) => ({
       ...s,
       plan_id: plan.id,
       mesocycle_id: mesocycle_order ? orderToId[mesocycle_order] : null,
       discipline_id: runningId,
+      session_date: startDate ? dateForWeekday(startDate, s.week_number, Math.min(6, s.day_number - 1)) : null,
     }))
 
     const { error: sessErr } = await supabase.from('sessions').insert(sessionsPayload)
@@ -374,7 +461,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 // ----------------------------------------------------------------------------
 // EDITAR PLAN + SESIONES + EVALUACIÓN
 // ----------------------------------------------------------------------------
-function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload }) {
+function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveToLibrary }) {
   const weeks = useMemo(() => {
     const byWeek = {}
     sessions.forEach((s) => {
@@ -397,11 +484,23 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload }) {
       ? Math.max(...weekSessions.map((s) => s.day_number)) + 1
       : 1
     const runningId = disciplines.find((d) => d.code === 'running')?.id || null
+    // Con fecha de inicio del plan, la sesión nueva se coloca en el primer día
+    // libre de esa semana (o el último si están todos ocupados).
+    let session_date = null
+    if (plan.start_date) {
+      const taken = new Set(weekSessions.map((s) => s.session_date).filter(Boolean))
+      for (let d = 0; d < 7; d += 1) {
+        const candidate = dateForWeekday(plan.start_date, weekNumber, d)
+        session_date = candidate
+        if (!taken.has(candidate)) break
+      }
+    }
     const { error } = await supabase.from('sessions').insert({
       plan_id: plan.id,
       mesocycle_id: mesocycleId,
       week_number: weekNumber,
       day_number: dayNumber,
+      session_date,
       discipline_id: runningId,
       session_type: '',
       description: '',
@@ -453,7 +552,15 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload }) {
             <WeekLoadBars weekLoad={weekLoad} maxLoad={maxLoad} maxImpact={maxImpact} />
             <div className="divide-y divide-mist">
               {items.map((s) => (
-                <CoachSessionRow key={s.id} session={s} disciplines={disciplines} onChanged={onReload} />
+                <CoachSessionRow
+                  key={s.id}
+                  session={s}
+                  disciplines={disciplines}
+                  mesocycles={mesocycles}
+                  planStart={plan.start_date}
+                  onChanged={onReload}
+                  onSaveToLibrary={(session) => onSaveToLibrary('session', session)}
+                />
               ))}
             </div>
             <div className="px-5 py-3">
@@ -503,247 +610,16 @@ function LoadBar({ label, value, max, colorClass }) {
   )
 }
 
-function CoachSessionRow({ session, disciplines, onChanged }) {
-  const [type, setType] = useState(session.session_type || '')
-  const [description, setDescription] = useState(session.description || '')
-  const [km, setKm] = useState(session.km_estimated ?? '')
-  const [rpeTheo, setRpeTheo] = useState(session.rpe_theoretical || '')
-  const [disciplineId, setDisciplineId] = useState(session.discipline_id || '')
-  const [durationPlanned, setDurationPlanned] = useState(session.duration_planned_min ?? '')
-  const [metrics, setMetrics] = useState(session.metrics || {})
-  const [saving, setSaving] = useState(false)
-  const [evaluations, setEvaluations] = useState(null)
-  const [showEval, setShowEval] = useState(false)
-
-  const discipline = findDiscipline(disciplines, disciplineId)
-
-  async function handleSave() {
-    setSaving(true)
-    const { error } = await supabase
-      .from('sessions')
-      .update({
-        session_type: type,
-        description,
-        km_estimated: km === '' ? null : Number(km),
-        rpe_theoretical: rpeTheo,
-        discipline_id: disciplineId || null,
-        duration_planned_min: durationPlanned === '' ? null : Number(durationPlanned),
-        metrics,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', session.id)
-    setSaving(false)
-    if (error) alert(error.message)
-    else onChanged()
-  }
-
-  async function handleDelete() {
-    if (!confirm('¿Eliminar esta sesión?')) return
-    const { error } = await supabase.from('sessions').delete().eq('id', session.id)
-    if (error) alert(error.message)
-    else onChanged()
-  }
-
-  async function loadEvaluations() {
-    const { data } = await supabase
-      .from('session_evaluations')
-      .select('*')
-      .eq('session_id', session.id)
-      .order('created_at', { ascending: false })
-    setEvaluations(data || [])
-  }
-
-  function toggleEval() {
-    setShowEval((v) => !v)
-    if (!evaluations) loadEvaluations()
-  }
-
-  return (
-    <div className="px-5 py-4">
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <span className="font-mono text-xs text-slate">Día {session.day_number}</span>
-        <select
-          value={disciplineId}
-          onChange={(e) => setDisciplineId(e.target.value)}
-          className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
-        >
-          <option value="">Disciplina…</option>
-          {disciplines.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
-        <input
-          type="number"
-          value={durationPlanned}
-          onChange={(e) => setDurationPlanned(e.target.value)}
-          placeholder="Duración prevista (min)"
-          className="w-44 border border-mist rounded-sm px-2 py-1.5 text-sm"
-        />
-        {session.session_load != null && (
-          <span className="font-mono text-[11px] text-navy-light ml-auto">
-            Carga: {Math.round(session.session_load)} · Impacto: {Math.round(session.impact_load)}
-          </span>
-        )}
-      </div>
-
-      {discipline && (
-        <div className="mb-3">
-          <DisciplineFields discipline={discipline} values={metrics} onChange={setMetrics} />
-          {discipline.metrics_schema?.has_exercises && (
-            <div className="mt-3">
-              <StrengthExercises sessionId={session.id} />
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="grid sm:grid-cols-12 gap-3 items-start">
-        <div className="sm:col-span-4">
-          <input
-            list="session-types"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            placeholder="Tipo de sesión"
-            className="w-full border border-mist rounded-sm px-3 py-2 text-sm"
-          />
-          <datalist id="session-types">
-            {SESSION_TYPES_SUGGESTED.map((t) => <option key={t} value={t} />)}
-          </datalist>
-        </div>
-
-        <div className="sm:col-span-4">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción del entrenamiento"
-            rows={2}
-            className="w-full border border-mist rounded-sm px-3 py-2 text-sm resize-none"
-          />
-        </div>
-
-        <div className="sm:col-span-1">
-          <input
-            type="number"
-            step="0.1"
-            value={km}
-            onChange={(e) => setKm(e.target.value)}
-            placeholder="Km"
-            className="w-full border border-mist rounded-sm px-2 py-2 text-sm"
-          />
-        </div>
-
-        <div className="sm:col-span-1">
-          <input
-            value={rpeTheo}
-            onChange={(e) => setRpeTheo(e.target.value)}
-            placeholder="RPE"
-            className="w-full border border-mist rounded-sm px-2 py-2 text-sm"
-          />
-        </div>
-
-        <div className="sm:col-span-2 flex flex-col items-end gap-1.5">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="text-xs font-semibold text-white bg-navy hover:bg-navy-deep px-3 py-1.5 rounded-sm disabled:opacity-60 w-full sm:w-auto"
-          >
-            {saving ? 'Guardando…' : 'Guardar'}
-          </button>
-          <button onClick={handleDelete} className="text-xs text-red hover:text-red-deep">
-            Eliminar
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-3 pl-0 sm:pl-[calc(8.3%)]">
-        <StatusBadge status={session.status} />
-        {session.rpe_actual && <span className="text-xs font-mono text-slate">RPE real: {session.rpe_actual}</span>}
-        {toSafeHref(session.link_url) && (
-          <a href={toSafeHref(session.link_url)} target="_blank" rel="noreferrer" className="text-xs text-navy underline underline-offset-2">
-            Ver entrenamiento
-          </a>
-        )}
-        {session.athlete_notes && <span className="text-xs text-slate italic">"{session.athlete_notes}"</span>}
-        <button onClick={toggleEval} className="text-xs font-semibold text-red hover:text-red-deep ml-auto">
-          {showEval ? 'Ocultar valoración' : 'Valorar sesión'}
-        </button>
-      </div>
-
-      {showEval && <EvaluationBox sessionId={session.id} evaluations={evaluations} onAdded={loadEvaluations} />}
-    </div>
-  )
-}
-
-function EvaluationBox({ sessionId, evaluations, onAdded }) {
-  const { user } = useAuth()
-  const [rating, setRating] = useState(3)
-  const [comment, setComment] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function handleAdd() {
-    setSaving(true)
-    const { error } = await supabase.from('session_evaluations').insert({
-      session_id: sessionId,
-      coach_id: user.id,
-      rating: Number(rating),
-      comment,
-    })
-    setSaving(false)
-    if (error) {
-      alert(error.message)
-      return
-    }
-    setComment('')
-    onAdded()
-  }
-
-  return (
-    <div className="mt-3 bg-bg-dim rounded-sm p-4 space-y-3">
-      {evaluations === null ? (
-        <p className="text-xs text-slate">Cargando valoraciones…</p>
-      ) : evaluations.length === 0 ? (
-        <p className="text-xs text-slate">Todavía no has valorado esta sesión.</p>
-      ) : (
-        <div className="space-y-2">
-          {evaluations.map((ev) => (
-            <div key={ev.id} className="text-sm">
-              <span className="font-mono text-xs text-navy-light">{'★'.repeat(ev.rating)}{'☆'.repeat(5 - ev.rating)}</span>
-              <p className="text-slate">{ev.comment}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <select value={rating} onChange={(e) => setRating(e.target.value)} className="border border-mist rounded-sm px-2 py-1.5 text-sm">
-          {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} ★</option>)}
-        </select>
-        <input
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Comentario para el atleta…"
-          className="flex-1 min-w-[180px] border border-mist rounded-sm px-3 py-1.5 text-sm"
-        />
-        <button
-          onClick={handleAdd}
-          disabled={saving || !comment}
-          className="text-xs font-semibold text-white bg-red hover:bg-red-deep px-3 py-1.5 rounded-sm disabled:opacity-60"
-        >
-          Añadir valoración
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ----------------------------------------------------------------------------
 // ZONAS DE FC
 // ----------------------------------------------------------------------------
-function HrZonesEditor({ planId, hrZones, athleteAge, onSaved }) {
+function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athleteAge, onSaved }) {
   const [age, setAge] = useState(hrZones?.age ?? athleteAge ?? '')
   const [maxHr, setMaxHr] = useState(hrZones?.max_hr_real ?? '')
   const [restingHr, setRestingHr] = useState(hrZones?.resting_hr ?? '')
   const [saving, setSaving] = useState(false)
+  // Vista previa en directo de las zonas manuales que se están escribiendo.
+  const [previewManual, setPreviewManual] = useState(manualZones)
 
   // Los números de la tabla se recalculan al escribir, sin esperar a guardar.
   const used = effectiveMaxHr({ maxHrReal: maxHr, age })
@@ -796,7 +672,17 @@ function HrZonesEditor({ planId, hrZones, athleteAge, onSaved }) {
         </button>
       </form>
 
-      <ZonesTable maxHr={used.value} sourceLabel={used.source} />
+      <HrZonesManual
+        key={JSON.stringify(manualZones)}
+        athleteId={athleteId}
+        coachId={coachId}
+        maxHr={used.value}
+        manualZones={manualZones}
+        onPreview={setPreviewManual}
+        onSaved={onSaved}
+      />
+
+      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} />
     </div>
   )
 }

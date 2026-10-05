@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
+import { dateForWeekday, mondayOf, shortDate } from '../lib/dates'
+import { cycleDatesFromWeeks, cycleRange, cycleWeeksFromDates, overlappingCycles } from '../lib/cycles'
 
 // Semáforo de macrociclos y mesociclos: rojo = pendiente, ámbar = en curso,
 // verde = completado. Se cambia a mano.
@@ -73,6 +75,8 @@ const labelCls = 'block font-mono text-xs text-slate mb-1'
 function MacroForm({ initial, onSave, onCancel, busy }) {
   const [name, setName] = useState(initial.name || '')
   const [objective, setObjective] = useState(initial.objective || '')
+  const [startDate, setStartDate] = useState(initial.start_date || '')
+  const [endDate, setEndDate] = useState(initial.end_date || '')
   return (
     <div className="bg-white border-2 border-navy rounded-sm p-4 space-y-3">
       <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar macrociclo' : 'Nuevo macrociclo'}</h4>
@@ -80,6 +84,17 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
         <label className={labelCls}>Nombre</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={initial.placeholder} />
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Fecha de inicio</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Fecha de fin</label>
+          <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <p className="text-xs text-slate -mt-1">Si lo dejas vacío, se ajusta solo a las fechas de sus mesociclos.</p>
       <div>
         <label className={labelCls}>Objetivo (opcional)</label>
         <textarea value={objective} onChange={(e) => setObjective(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
@@ -88,7 +103,7 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSave({ ...initial, name, objective })}
+          onClick={() => onSave({ ...initial, name, objective, start_date: startDate, end_date: endDate })}
           className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
           Guardar
@@ -101,13 +116,34 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
   )
 }
 
-function MesoForm({ initial, macros, onSave, onCancel, busy }) {
+function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
   const [name, setName] = useState(initial.name || '')
   const [macroId, setMacroId] = useState(initial.macrocycle_id || '')
   const [weekStart, setWeekStart] = useState(initial.week_start ?? 1)
   const [weekEnd, setWeekEnd] = useState(initial.week_end ?? 4)
+  const [startDate, setStartDate] = useState(() => initial.start_date || cycleDatesFromWeeks(planStart, initial.week_start ?? 1, initial.week_end ?? 4).start_date || '')
+  const [endDate, setEndDate] = useState(() => initial.end_date || cycleDatesFromWeeks(planStart, initial.week_start ?? 1, initial.week_end ?? 4).end_date || '')
   const [focus, setFocus] = useState(initial.focus || '')
   const [keyObjective, setKeyObjective] = useState(initial.key_objective || '')
+  // Fechas y semanas se mantienen sincronizadas cuando el plan tiene inicio.
+  function changeDates(nextStart, nextEnd) {
+    setStartDate(nextStart)
+    setEndDate(nextEnd)
+    const w = cycleWeeksFromDates(planStart, nextStart, nextEnd)
+    if (w) {
+      setWeekStart(w.week_start)
+      setWeekEnd(w.week_end)
+    }
+  }
+  function changeWeeks(nextStart, nextEnd) {
+    setWeekStart(nextStart)
+    setWeekEnd(nextEnd)
+    const d = cycleDatesFromWeeks(planStart, nextStart, nextEnd)
+    if (d.start_date) {
+      setStartDate(d.start_date)
+      setEndDate(d.end_date)
+    }
+  }
   return (
     <div className="bg-white border-2 border-navy rounded-sm p-4 space-y-3">
       <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar mesociclo' : 'Nuevo mesociclo'}</h4>
@@ -117,14 +153,29 @@ function MesoForm({ initial, macros, onSave, onCancel, busy }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
+          <label className={labelCls}>Fecha de inicio</label>
+          <input type="date" value={startDate} onChange={(e) => changeDates(e.target.value, endDate)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Fecha de fin</label>
+          <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => changeDates(startDate, e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
           <label className={labelCls}>Semana de inicio</label>
-          <input type="number" min={1} value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className={inputCls} />
+          <input type="number" min={1} value={weekStart} onChange={(e) => changeWeeks(e.target.value, weekEnd)} className={inputCls} />
         </div>
         <div>
           <label className={labelCls}>Semana final</label>
-          <input type="number" min={1} value={weekEnd} onChange={(e) => setWeekEnd(e.target.value)} className={inputCls} />
+          <input type="number" min={1} value={weekEnd} onChange={(e) => changeWeeks(weekStart, e.target.value)} className={inputCls} />
         </div>
       </div>
+      <p className="text-xs text-slate -mt-1">
+        {planStart
+          ? `Fechas y semanas van unidas (la semana 1 empieza el lunes ${shortDate(mondayOf(planStart))}). Las sesiones de este mesociclo aparecen en esos días del calendario del atleta.`
+          : 'El plan aún no tiene fecha de inicio: al guardar con fechas, el plan empezará el lunes de la fecha de inicio.'}
+      </p>
       <div>
         <label className={labelCls}>Macrociclo</label>
         <select value={macroId} onChange={(e) => setMacroId(e.target.value)} className={`${inputCls} bg-white`}>
@@ -146,7 +197,7 @@ function MesoForm({ initial, macros, onSave, onCancel, busy }) {
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSave({ ...initial, name, macrocycle_id: macroId, week_start: weekStart, week_end: weekEnd, focus, key_objective: keyObjective })}
+          onClick={() => onSave({ ...initial, name, macrocycle_id: macroId, week_start: weekStart, week_end: weekEnd, start_date: startDate, end_date: endDate, focus, key_objective: keyObjective })}
           className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
           Guardar
@@ -162,7 +213,7 @@ function MesoForm({ initial, macros, onSave, onCancel, busy }) {
 // Panel "Macrociclos y mesociclos": macrociclo > mesociclos > semanas
 // (microciclos) > sesiones. Los macrociclos y los mesociclos se muestran del
 // último al primero (el 1 queda abajo del todo).
-export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions, disciplines, onReload, onGoToPlan }) {
+export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions, disciplines, onReload, onGoToPlan, onSaveToLibrary }) {
   const sortedMacros = useMemo(
     () => [...macrocycles].sort((a, b) => b.order_index - a.order_index),
     [macrocycles]
@@ -252,10 +303,24 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   async function saveMacro(f) {
     const name = f.name.trim() || `Macrociclo ${nextMacroOrder}`
     const objective = f.objective.trim() || null
+    let start_date = f.start_date || null
+    let end_date = f.end_date || null
+    if (start_date && end_date && end_date < start_date) {
+      alert('La fecha de fin no puede ser anterior a la de inicio.')
+      return
+    }
+    // Sin fechas propias, el macrociclo abarca las de sus mesociclos.
+    if (f.id && !start_date && !end_date) {
+      const ranges = (mesosByMacro[f.id] || []).map((m) => cycleRange(m, plan.start_date)).filter(Boolean)
+      if (ranges.length) {
+        start_date = ranges.map((r) => r[0]).sort()[0]
+        end_date = ranges.map((r) => r[1]).sort().at(-1)
+      }
+    }
     const ok = f.id
-      ? await run(supabase.from('macrocycles').update({ name, objective }).eq('id', f.id))
+      ? await run(supabase.from('macrocycles').update({ name, objective, start_date, end_date }).eq('id', f.id))
       : await run(
-          supabase.from('macrocycles').insert({ plan_id: plan.id, order_index: nextMacroOrder, name, objective })
+          supabase.from('macrocycles').insert({ plan_id: plan.id, order_index: nextMacroOrder, name, objective, start_date, end_date })
         )
     if (ok) setForm(null)
   }
@@ -268,17 +333,55 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   }
 
   async function saveMeso(f) {
-    const weekStart = Number(f.week_start)
-    const weekEnd = Number(f.week_end)
+    let weekStart = Number(f.week_start)
+    let weekEnd = Number(f.week_end)
+    let start_date = f.start_date || null
+    let end_date = f.end_date || null
+    if (start_date && end_date && end_date < start_date) {
+      alert('La fecha de fin no puede ser anterior a la de inicio.')
+      return
+    }
+
+    // Plan sin fecha de inicio: el inicio de este mesociclo fija la semana 1.
+    let planStart = plan.start_date
+    if (!planStart && start_date) {
+      planStart = mondayOf(start_date)
+      const { error } = await supabase.from('training_plans').update({ start_date: planStart }).eq('id', plan.id)
+      if (error) {
+        alert(error.message)
+        return
+      }
+    }
+
+    if (planStart && start_date && end_date) {
+      const w = cycleWeeksFromDates(planStart, start_date, end_date)
+      if (!w) {
+        alert(`Las fechas deben ser iguales o posteriores al inicio del plan (semana del ${planStart}).`)
+        return
+      }
+      weekStart = w.week_start
+      weekEnd = w.week_end
+    } else if (planStart && !start_date) {
+      const d = cycleDatesFromWeeks(planStart, weekStart, weekEnd)
+      start_date = d.start_date
+      end_date = d.end_date
+    }
+
     if (!Number.isInteger(weekStart) || !Number.isInteger(weekEnd) || weekStart < 1 || weekEnd < weekStart || weekEnd > 104) {
       alert('Revisa las semanas: deben ser números enteros, la final igual o mayor que la inicial.')
       return
     }
+
+    const clash = overlappingCycles(mesocycles, start_date && end_date ? [start_date, end_date] : null, planStart, f.id)
+    if (clash.length && !confirm(`Estas fechas se solapan con: ${clash.map((c) => c.name).join(', ')}. ¿Guardar igualmente?`)) return
+
     const order = f.id ? f.order_index : nextMesoOrder
     const payload = {
       name: f.name.trim() || `Mesociclo ${order}`,
       week_start: weekStart,
       week_end: weekEnd,
+      start_date,
+      end_date,
       focus: f.focus.trim() || null,
       key_objective: f.key_objective.trim() || null,
       macrocycle_id: f.macrocycle_id || null,
@@ -287,6 +390,17 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       ? await run(supabase.from('mesocycles').update(payload).eq('id', f.id))
       : await run(supabase.from('mesocycles').insert({ ...payload, plan_id: plan.id, order_index: order }))
     if (!ok) return
+
+    // El macrociclo se ensancha para abarcar a su mesociclo.
+    const macro = macrocycles.find((m) => m.id === payload.macrocycle_id)
+    if (macro && start_date && end_date) {
+      const nextStart = !macro.start_date || start_date < macro.start_date ? start_date : macro.start_date
+      const nextEnd = !macro.end_date || end_date > macro.end_date ? end_date : macro.end_date
+      if (nextStart !== macro.start_date || nextEnd !== macro.end_date) {
+        await run(supabase.from('macrocycles').update({ start_date: nextStart, end_date: nextEnd }).eq('id', macro.id))
+      }
+    }
+
     if (weekEnd > plan.duration_weeks) {
       await run(supabase.from('training_plans').update({ duration_weeks: weekEnd }).eq('id', plan.id))
     }
@@ -302,12 +416,23 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     const items = sessionsByWeek[week] || []
     const day = items.length ? Math.max(...items.map((s) => s.day_number)) + 1 : 1
     const runningId = disciplines.find((d) => d.code === 'running')?.id || null
+    // La sesión nueva se coloca en el primer día libre de esa semana del
+    // calendario, así aparece ya en el calendario del atleta.
+    let session_date = null
+    if (plan.start_date) {
+      const taken = new Set(items.map((x) => x.session_date).filter(Boolean))
+      for (let d = 0; d < 7; d += 1) {
+        session_date = dateForWeekday(plan.start_date, week, d)
+        if (!taken.has(session_date)) break
+      }
+    }
     await run(
       supabase.from('sessions').insert({
         plan_id: plan.id,
         mesocycle_id: meso.id,
         week_number: week,
         day_number: day,
+        session_date,
         discipline_id: runningId,
         session_type: '',
         description: '',
@@ -392,7 +517,9 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
           <StatusPicker value={meso.status || 'pendiente'} onChange={(s) => setMesoStatus(meso.id, s)} disabled={busy} />
         </div>
         <p className="px-3 pb-2 font-mono text-[11px] text-slate">
-          Sem {meso.week_start} - {meso.week_end} · {stats.done}/{stats.total} sesiones · {Math.round(stats.km * 10) / 10} km
+          Sem {meso.week_start} - {meso.week_end}
+          {cycleRange(meso, plan.start_date) ? ` · ${shortDate(cycleRange(meso, plan.start_date)[0])} → ${shortDate(cycleRange(meso, plan.start_date)[1])}` : ''}
+          {' '}· {stats.done}/{stats.total} sesiones · {Math.round(stats.km * 10) / 10} km
         </p>
         {open && (
           <div className="border-t border-mist px-3 py-3 space-y-3">
@@ -415,6 +542,11 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
               >
                 Editar mesociclo
               </button>
+              {onSaveToLibrary && (
+                <button type="button" onClick={() => onSaveToLibrary('mesocycle', meso)} className="text-xs font-semibold text-navy hover:text-red">
+                  A la biblioteca
+                </button>
+              )}
               <button type="button" onClick={() => deleteMeso(meso)} className="text-xs font-semibold text-slate hover:text-red">
                 Eliminar
               </button>
@@ -470,6 +602,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
               key={form.id || 'new-meso'}
               initial={form}
               macros={sortedMacros}
+              planStart={plan.start_date}
               busy={busy}
               onSave={saveMeso}
               onCancel={() => setForm(null)}
@@ -509,6 +642,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
             <p className="px-4 pb-3 font-mono text-[11px] text-slate">
               {mesos.length} {mesos.length === 1 ? 'mesociclo' : 'mesociclos'}
               {mesos.length > 0 && ` · Sem ${Math.min(...starts)} - ${Math.max(...ends)} · ${stats.done}/${stats.total} sesiones`}
+              {mc.start_date && mc.end_date ? ` · ${shortDate(mc.start_date)} → ${shortDate(mc.end_date)}` : ''}
             </p>
             {open && (
               <div className="border-t border-mist px-4 py-4 space-y-3">
@@ -526,6 +660,11 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
                   <button type="button" onClick={() => setForm({ kind: 'macro', ...mc })} className="text-xs font-semibold text-navy hover:text-red">
                     Editar macrociclo
                   </button>
+                  {onSaveToLibrary && mesos.length > 0 && (
+                    <button type="button" onClick={() => onSaveToLibrary('macrocycle', mc)} className="text-xs font-semibold text-navy hover:text-red">
+                      A la biblioteca
+                    </button>
+                  )}
                   <button type="button" onClick={() => deleteMacro(mc)} className="text-xs font-semibold text-slate hover:text-red">
                     Eliminar
                   </button>
