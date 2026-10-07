@@ -1,8 +1,10 @@
+import { tr } from '../../i18n'
+
 // Tarjeta de un gráfico: título, descripción, contenido y, opcionalmente, la
 // vista en tabla (siempre disponible: los gráficos nunca son la única vía).
 export default function ChartCard({ title, subtitle, right, children, table }) {
   return (
-    <section className="bg-white border border-mist rounded-sm overflow-hidden">
+    <section className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-display text-lg text-navy">{title}</h3>
@@ -15,7 +17,7 @@ export default function ChartCard({ title, subtitle, right, children, table }) {
         <details className="border-t border-mist group">
           <summary className="px-5 py-3 text-sm font-semibold text-navy cursor-pointer select-none hover:text-red list-none flex items-center gap-2">
             <span className="font-mono text-xs text-slate group-open:rotate-90 transition-transform inline-block">▸</span>
-            Ver datos en tabla
+            {tr('chart.viewTable')}
           </summary>
           <div className="px-5 pb-5 overflow-x-auto">{table}</div>
         </details>
@@ -64,7 +66,7 @@ export function DataTable({ columns, rows, footer }) {
 
 export function KpiTile({ label, value, unit, detail }) {
   return (
-    <div className="bg-white border border-mist rounded-sm p-5">
+    <div className="bg-surface border border-mist rounded-sm p-5">
       <p className="font-mono text-[11px] uppercase text-navy-light">{label}</p>
       <p className="mt-1 flex items-baseline gap-1.5">
         <span className="font-display text-3xl text-navy">{value}</span>

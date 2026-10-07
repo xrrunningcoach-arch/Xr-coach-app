@@ -1,3 +1,4 @@
+import { useT } from '../../i18n'
 import { WEEKDAY_SHORT, dayNumber, mondayOf, monthMatrix, parseISO, weekNumberFor } from '../../lib/dates'
 
 // Cuadrícula de un mes, como un calendario de ordenador: semanas de lunes a
@@ -15,14 +16,15 @@ export default function MonthGrid({
   onDragOverDay,
   cellMinHeight = 'min-h-[88px] sm:min-h-[110px]',
 }) {
+  const t = useT()
   const d = parseISO(cursor)
   const month = d.getUTCMonth()
   const weeks = monthMatrix(d.getUTCFullYear(), month)
 
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-hidden" role="grid" aria-label="Calendario mensual">
+    <div className="bg-surface border border-mist rounded-sm overflow-hidden" role="grid" aria-label={t('cal.monthly')}>
       <div className="grid grid-cols-[28px_repeat(7,minmax(0,1fr))] sm:grid-cols-[36px_repeat(7,minmax(0,1fr))] bg-bg-dim border-b border-mist" role="row">
-        <div className="py-2 text-center font-mono text-[10px] text-navy-light" role="columnheader">Sem</div>
+        <div className="py-2 text-center font-mono text-[10px] text-navy-light" role="columnheader">{t('cal.weekShort')}</div>
         {WEEKDAY_SHORT.map((w) => (
           <div key={w} className="py-2 text-center font-mono text-[11px] text-slate" role="columnheader">
             <span className="sm:hidden">{w.charAt(0)}</span>
@@ -59,13 +61,13 @@ export default function MonthGrid({
                   onDragOver={onDragOverDay ? (e) => onDragOverDay(e, iso) : undefined}
                   onDrop={onDropDay ? (e) => onDropDay(e, iso) : undefined}
                   className={`${cellMinHeight} p-1 sm:p-1.5 border-r border-mist last:border-r-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-navy-light focus-visible:ring-inset transition-colors ${
-                    isSelected ? 'bg-bg-dim' : inMonth ? 'bg-white hover:bg-bg' : 'bg-bg/60 hover:bg-bg'
+                    isSelected ? 'bg-bg-dim' : inMonth ? 'bg-surface hover:bg-bg' : 'bg-bg/60 hover:bg-bg'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span
                       className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-full text-xs font-mono ${
-                        isToday ? 'bg-red text-white font-bold' : inMonth ? 'text-ink' : 'text-slate/50'
+                        isToday ? 'bg-brand text-white font-bold' : inMonth ? 'text-ink' : 'text-slate/50'
                       }`}
                     >
                       {dayNumber(iso)}

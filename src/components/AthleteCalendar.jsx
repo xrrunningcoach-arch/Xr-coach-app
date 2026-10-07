@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import SessionCard from './SessionCard'
+import { tr, useT } from '../i18n'
 import WeekLoadBars from './WeekLoadBars'
 import CalendarToolbar from './calendar/CalendarToolbar'
 import MonthGrid from './calendar/MonthGrid'
@@ -25,8 +26,8 @@ import {
 } from '../lib/dates'
 
 const VIEWS = [
-  { id: 'week', label: 'Semana' },
-  { id: 'month', label: 'Mes' },
+  { id: 'week', key: 'cal.week' },
+  { id: 'month', key: 'cal.month' },
 ]
 const VIEW_KEY = 'xr.calendar.view'
 
@@ -58,6 +59,7 @@ export default function AthleteCalendar({
   milestones,
   onUpdated,
 }) {
+  const t = useT()
   const today = useToday()
   const [view, setView] = useState(readView)
   const [cursor, setCursor] = useState(() => today)
@@ -97,7 +99,7 @@ export default function AthleteCalendar({
     }
     milestones.forEach((m) => push(m.event_date, { id: m.id, title: m.title, kind: 'hito' }))
     if (plan?.race_date) {
-      push(plan.race_date, { id: 'race', title: plan.races?.name || plan.custom_race_name || 'Prueba objetivo', kind: 'prueba' })
+      push(plan.race_date, { id: 'race', title: plan.races?.name || plan.custom_race_name || tr('today.race'), kind: 'prueba' })
     }
     return map
   }, [milestones, plan])
@@ -153,9 +155,9 @@ export default function AthleteCalendar({
   const meso = view === 'week' ? cycleForDate(mesocycles, midWeek, planStart) : cycleForDate(mesocycles, today, planStart)
   const subtitle =
     view === 'week'
-      ? [planWeek && planWeek >= 1 ? `Semana ${planWeek} del plan` : null, meso?.name].filter(Boolean).join(' · ')
+      ? [planWeek && planWeek >= 1 ? t('cal.weekOfPlan', { n: planWeek }) : null, meso?.name].filter(Boolean).join(' · ')
       : meso
-        ? `Ahora: ${meso.name}`
+        ? t('cal.now', { name: meso.name })
         : ''
 
   function renderCards(list) {
@@ -183,7 +185,7 @@ export default function AthleteCalendar({
         title={ev.title}
         className="inline-block max-w-full truncate rounded-sm bg-red/10 text-red-deep px-1.5 py-0.5 font-mono text-[10px] sm:text-[10px]"
       >
-        {ev.kind === 'prueba' ? 'Prueba' : 'Hito'}: {ev.title}
+        {ev.kind === 'prueba' ? t('cal.event.race') : t('cal.event.milestone')}: {ev.title}
       </span>
     ))
   }
@@ -196,13 +198,13 @@ export default function AthleteCalendar({
     const km = items.reduce((t, s) => t + (Number(s.km_estimated) || 0), 0)
     const weekLoad = loadByMonday.get(weekMonday)
     return (
-      <div className="bg-white border border-mist rounded-sm overflow-hidden">
+      <div className="bg-surface border border-mist rounded-sm overflow-hidden">
         <div className="bg-bg-dim px-5 py-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-display text-lg text-navy">
-            {planWeek && planWeek >= 1 ? `Semana ${planWeek}` : 'Semana'}
+            {planWeek && planWeek >= 1 ? t('cal.weekN', { n: planWeek }) : t('cal.week')}
           </h3>
           <span className="font-mono text-[11px] text-slate">
-            {done}/{items.length} sesiones · {Math.round(km * 10) / 10} km
+            {t('cal.sessionsCount', { done, total: items.length, km: Math.round(km * 10) / 10 })}
           </span>
         </div>
         <WeekLoadBars weekLoad={weekLoad} maxLoad={maxLoad} maxImpact={maxImpact} />
@@ -220,7 +222,7 @@ export default function AthleteCalendar({
                 <p className="font-mono text-[11px] text-slate uppercase">{WEEKDAY_SHORT[i]}</p>
                 <p
                   className={`mx-auto mt-1 inline-flex items-center justify-center min-w-[32px] h-8 px-1 rounded-full font-display text-lg ${
-                    isToday ? 'bg-red text-white' : past ? 'text-slate' : 'text-navy'
+                    isToday ? 'bg-brand text-white' : past ? 'text-slate' : 'text-navy'
                   }`}
                 >
                   {dayNumber(iso)}
@@ -234,7 +236,7 @@ export default function AthleteCalendar({
                 {list.length > 0 ? (
                   renderCards(list)
                 ) : (
-                  <p className={`px-5 py-4 text-xs italic ${past ? 'text-slate/60' : 'text-slate'}`}>Sin entrenamiento programado</p>
+                  <p className={`px-5 py-4 text-xs italic ${past ? 'text-slate/60' : 'text-slate'}`}>{t('cal.noTraining')}</p>
                 )}
               </div>
             </section>
@@ -275,7 +277,7 @@ export default function AthleteCalendar({
                   )
                 })}
                 {list.length > shown.length && (
-                  <span className="font-mono text-[10px] text-slate">+{list.length - shown.length} más</span>
+                  <span className="font-mono text-[10px] text-slate">{t('cal.more', { n: list.length - shown.length })}</span>
                 )}
               </>
             )
@@ -283,11 +285,11 @@ export default function AthleteCalendar({
         />
 
         {selectedDay ? (
-          <div className="bg-white border border-mist rounded-sm overflow-hidden">
+          <div className="bg-surface border border-mist rounded-sm overflow-hidden">
             <div className="bg-bg-dim px-5 py-3 flex items-center justify-between gap-2">
               <h3 className="font-display text-lg text-navy">{longDayTitle(selectedDay)}</h3>
               <button type="button" onClick={() => setSelectedDay(null)} className="text-xs font-semibold text-slate hover:text-red">
-                Cerrar
+                {t('common.close')}
               </button>
             </div>
             {(eventsByDate.get(selectedDay) || []).length > 0 && (
@@ -296,11 +298,11 @@ export default function AthleteCalendar({
             {dayList.length > 0 ? (
               renderCards(dayList)
             ) : (
-              <p className="px-5 py-5 text-sm text-slate">No hay entrenamientos programados este día.</p>
+              <p className="px-5 py-5 text-sm text-slate">{t('cal.noneDay')}</p>
             )}
           </div>
         ) : (
-          <p className="text-xs text-slate">Pulsa un día para ver sus entrenamientos y registrarlos.</p>
+          <p className="text-xs text-slate">{t('cal.hint')}</p>
         )}
       </div>
     )
@@ -321,7 +323,7 @@ export default function AthleteCalendar({
       />
 
       {usedDisciplines.length > 1 && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Leyenda de disciplinas">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t('cal.legend')}>
           {usedDisciplines.map((d) => (
             <li key={d.id} className="flex items-center gap-1.5 font-mono text-[11px] text-slate">
               <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: disciplineColor(d, disciplines) }} aria-hidden="true" />
@@ -334,10 +336,10 @@ export default function AthleteCalendar({
       {view === 'week' ? renderWeek() : renderMonth()}
 
       {undated.length > 0 && (
-        <div className="bg-white border border-mist rounded-sm overflow-hidden">
+        <div className="bg-surface border border-mist rounded-sm overflow-hidden">
           <div className="bg-bg-dim px-5 py-3">
-            <h3 className="font-display text-lg text-navy">Sin día asignado</h3>
-            <p className="font-mono text-[11px] text-slate">Tu entrenador aún no les ha puesto fecha en el calendario.</p>
+            <h3 className="font-display text-lg text-navy">{t('cal.undated')}</h3>
+            <p className="font-mono text-[11px] text-slate">{t('cal.undatedHelp')}</p>
           </div>
           {renderCards(undated)}
         </div>

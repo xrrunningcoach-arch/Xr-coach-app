@@ -1,5 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
+import { LangProvider, LangBoundary } from './i18n'
+import UiHost from './ui/UiHost'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
@@ -19,7 +21,10 @@ function RoleRedirect() {
 
 export default function App() {
   return (
+    <LangProvider>
     <AuthProvider>
+      <LangBoundary>
+      <UiHost />
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -66,6 +71,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>
+      </LangBoundary>
     </AuthProvider>
+    </LangProvider>
   )
 }

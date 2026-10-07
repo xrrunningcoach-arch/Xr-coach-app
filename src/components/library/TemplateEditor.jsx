@@ -14,9 +14,10 @@ import {
   validateTemplate,
 } from '../../lib/templates'
 import { saveLibraryItem } from '../../lib/templatesApi'
+import { ui } from '../../ui/ui'
 
-const inputCls = 'w-full border border-mist rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-navy'
-const smallInput = 'w-full border border-mist rounded-sm px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-navy'
+const inputCls = 'w-full border border-mist rounded-sm px-3 py-2 text-sm bg-surface focus:outline-none focus:border-navy'
+const smallInput = 'w-full border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface focus:outline-none focus:border-navy'
 const labelCls = 'block font-mono text-xs text-slate mb-1'
 
 let uid = 0
@@ -130,10 +131,10 @@ function BlockEditor({ block, index, total, disciplines, onChange, onRemove }) {
       return next
     })
 
-  function setWeeks(raw) {
+  async function setWeeks(raw) {
     const weeks = Math.min(MAX_BLOCK_WEEKS, Math.max(1, Number(raw) || 1))
     const lost = block.sessions.filter((s) => s.week_offset >= weeks)
-    if (lost.length && !confirm(`Al reducir a ${weeks} semanas se eliminarán ${lost.length} sesiones de las últimas semanas. ¿Continuar?`)) return
+    if (lost.length && !(await ui.confirm(`Al reducir a ${weeks} semanas se eliminarán ${lost.length} sesiones de las últimas semanas. ¿Continuar?`, { danger: true, confirmLabel: 'Reducir' }))) return
     set({ weeks, sessions: block.sessions.filter((s) => s.week_offset < weeks) })
   }
 
@@ -145,13 +146,13 @@ function BlockEditor({ block, index, total, disciplines, onChange, onRemove }) {
     setOpen((prev) => new Set(prev).add(s._id))
   }
 
-  function duplicateWeek(week) {
+  async function duplicateWeek(week) {
     if (week + 1 >= block.weeks) {
-      alert('Es la última semana del bloque. Aumenta el número de semanas para duplicarla.')
+      ui.error('Es la última semana del bloque. Aumenta el número de semanas para duplicarla.')
       return
     }
     const target = week + 1
-    if (block.sessions.some((s) => s.week_offset === target) && !confirm(`La semana ${target + 1} ya tiene sesiones; se añadirán las de la semana ${week + 1}. ¿Continuar?`)) return
+    if (block.sessions.some((s) => s.week_offset === target) && !(await ui.confirm(`La semana ${target + 1} ya tiene sesiones; se añadirán las de la semana ${week + 1}. ¿Continuar?`, { confirmLabel: 'Duplicar' }))) return
     const copies = block.sessions
       .filter((s) => s.week_offset === week)
       .map((s) => withId({ ...s, _id: undefined, week_offset: target, metrics: { ...s.metrics }, exercises: (s.exercises || []).map((e) => ({ ...e })) }))
@@ -162,7 +163,7 @@ function BlockEditor({ block, index, total, disciplines, onChange, onRemove }) {
   const removeSession = (id) => set({ sessions: block.sessions.filter((s) => s._id !== id) })
 
   return (
-    <div className="border-2 border-navy rounded-sm bg-white">
+    <div className="border-2 border-navy rounded-sm bg-surface">
       <div className="p-4 space-y-3 border-b border-mist">
         <div className="flex items-center justify-between gap-3">
           <h4 className="font-display text-lg text-navy">{total > 1 ? `Mesociclo ${index + 1}` : 'Contenido del plan'}</h4>
@@ -255,10 +256,10 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
 
   const blocks = payload.blocks || []
 
-  function changeKind(next) {
+  async function changeKind(next) {
     if (next === kind) return
     const hasContent = kind === 'session' ? !!(payload.session?.session_type || payload.session?.description) : blocks.some((b) => b.sessions.length)
-    if (hasContent && !confirm('Al cambiar el tipo se pierde el contenido que has escrito. ¿Continuar?')) return
+    if (hasContent && !(await ui.confirm('Al cambiar el tipo se pierde el contenido que has escrito. ¿Continuar?', { danger: true, confirmLabel: 'Cambiar' }))) return
     setKind(next)
     setPayload(hydrate(next, emptyPayload(next)))
   }
@@ -303,7 +304,7 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
         ))}
       </datalist>
 
-      <div className="bg-white border border-mist rounded-sm p-5 space-y-4">
+      <div className="bg-surface border border-mist rounded-sm p-5 space-y-4">
         <h2 className="font-display text-xl text-navy">{initial ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
 
         {!initial && (
@@ -314,7 +315,7 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
                 type="button"
                 onClick={() => changeKind(k.id)}
                 aria-pressed={kind === k.id}
-                className={`px-3 py-2 text-sm ${kind === k.id ? 'bg-navy text-white font-semibold' : 'text-slate hover:bg-bg'}`}
+                className={`px-3 py-2 text-sm ${kind === k.id ? 'bg-primary text-white font-semibold' : 'text-slate hover:bg-bg'}`}
               >
                 {k.label}
               </button>
@@ -345,7 +346,7 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
       </div>
 
       {kind === 'session' ? (
-        <div className="bg-white border border-mist rounded-sm p-5">
+        <div className="bg-surface border border-mist rounded-sm p-5">
           <SessionFields value={payload.session} onChange={(session) => setPayload({ session })} disciplines={disciplines} />
         </div>
       ) : (
@@ -365,7 +366,7 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
             <button
               type="button"
               onClick={() => setPayload({ ...payload, blocks: [...blocks, { ...emptyBlock(`Mesociclo ${blocks.length + 1}`), _id: `b${(uid += 1)}` }] })}
-              className="px-4 py-2 text-sm font-semibold text-navy border border-navy rounded-sm hover:bg-navy hover:text-white"
+              className="px-4 py-2 text-sm font-semibold text-navy border border-navy rounded-sm hover:bg-primary hover:text-white"
             >
               + Añadir mesociclo
             </button>
@@ -382,7 +383,7 @@ export default function TemplateEditor({ initial, defaultKind = 'session', disci
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
           {saving ? 'Guardando…' : 'Guardar en la biblioteca'}
         </button>
         <button type="button" onClick={onCancel} className="px-4 py-2.5 text-sm text-slate border border-mist rounded-sm hover:border-red hover:text-red">

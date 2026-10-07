@@ -1,9 +1,10 @@
+import { tr } from '../../i18n'
 import { TooltipBox, useTooltip } from './tooltip'
 
 // Barras horizontales: una fila por categoría. La barra clara es lo
 // programado y la sólida lo completado (mismo color = misma disciplina).
 //   rows: [{ key, label, color, total, done }]
-export default function HBars({ rows, format = (v) => String(v), unitLabel = '', ariaLabel, totalLabel = 'Programado', doneLabel = 'Completado' }) {
+export default function HBars({ rows, format = (v) => String(v), unitLabel = '', ariaLabel, totalLabel = tr('chart.planned'), doneLabel = tr('chart.done') }) {
   const { ref, tip, showAtPointer, showAtElement, hide } = useTooltip()
   const max = Math.max(1, ...rows.map((r) => Math.max(r.total, r.done)))
 
@@ -15,7 +16,7 @@ export default function HBars({ rows, format = (v) => String(v), unitLabel = '',
             title: r.label,
             rows: [
               { color: r.color, label: doneLabel, value: `${format(r.done)}${unitLabel}` },
-              { color: `${r.color}55`, label: totalLabel, value: `${format(r.total)}${unitLabel}` },
+              { color: `color-mix(in srgb, ${r.color} 33%, transparent)`, label: totalLabel, value: `${format(r.total)}${unitLabel}` },
             ],
           }
           return (
@@ -52,10 +53,10 @@ export default function HBars({ rows, format = (v) => String(v), unitLabel = '',
       </ul>
       <div className="flex gap-4 mt-4 font-mono text-[11px] text-slate">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-2 rounded-sm bg-navy-mid" aria-hidden="true" /> {doneLabel}
+          <span className="inline-block w-3 h-2 rounded-sm bg-slate" aria-hidden="true" /> {doneLabel}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-2 rounded-sm bg-navy-mid opacity-25" aria-hidden="true" /> {totalLabel}
+          <span className="inline-block w-3 h-2 rounded-sm bg-slate opacity-30" aria-hidden="true" /> {totalLabel}
         </span>
       </div>
       <TooltipBox tip={tip} />

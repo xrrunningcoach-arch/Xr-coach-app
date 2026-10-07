@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { HR_ZONES, manualZoneWarnings, parseManualForm, resolveZones } from '../lib/zones'
 
-const inputCls = 'w-24 border border-mist rounded-sm px-2 py-1.5 text-sm font-mono bg-white focus:outline-none focus:border-navy'
+const inputCls = 'w-24 border border-mist rounded-sm px-2 py-1.5 text-sm font-mono bg-surface focus:outline-none focus:border-navy'
 
 function toFields(manualZones) {
   const out = {}
@@ -71,7 +71,7 @@ export default function HrZonesManual({ athleteId, coachId, maxHr, manualZones, 
   }
 
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-hidden">
+    <div className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-display text-lg text-navy">Zonas manuales de este atleta</h3>
@@ -100,7 +100,7 @@ export default function HrZonesManual({ athleteId, coachId, maxHr, manualZones, 
               return (
                 <tr key={z.code} className="align-top">
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-block w-8 text-center font-mono text-xs font-bold bg-navy text-white rounded-sm py-0.5 mr-2">{z.code}</span>
+                    <span className="inline-block w-8 text-center font-mono text-xs font-bold bg-primary text-white rounded-sm py-0.5 mr-2">{z.code}</span>
                     {z.name}
                   </td>
                   <td className="px-4 py-3 font-mono whitespace-nowrap text-slate">
@@ -161,7 +161,7 @@ export default function HrZonesManual({ athleteId, coachId, maxHr, manualZones, 
             type="button"
             onClick={handleSave}
             disabled={saving || hasErrors}
-            className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+            className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
           >
             {saving ? 'Guardando…' : 'Guardar zonas manuales'}
           </button>

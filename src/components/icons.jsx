@@ -69,3 +69,49 @@ export const IconPanel = make(
 )
 export const IconCheck = make(<path d="m5 12.5 4.5 4.5L19 7.5" />)
 export const IconClose = make(<path d="M6 6l12 12M18 6 6 18" />)
+export const IconSun = make(
+  <>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6" />
+  </>
+)
+export const IconMoon = make(<path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />)
+export const IconHome = make(
+  <>
+    <path d="M4 11 12 4l8 7" />
+    <path d="M6 10v9.5h12V10" />
+    <path d="M10 19.5v-5h4v5" />
+  </>
+)
+export const IconMore = make(
+  <>
+    <circle cx="5.5" cy="12" r="1.4" />
+    <circle cx="12" cy="12" r="1.4" />
+    <circle cx="18.5" cy="12" r="1.4" />
+  </>
+)
+export const IconBook = make(
+  <>
+    <path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3Z" />
+    <path d="M5 17a3 3 0 0 1 3-3h10" />
+  </>
+)
+export const IconUsers = make(
+  <>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5" />
+    <path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M18 14.8c1.7.7 2.7 2.2 3 4.7" />
+  </>
+)
+export const IconAlert = make(
+  <>
+    <path d="M12 3.5 21.5 20h-19Z" />
+    <path d="M12 10v4.5M12 17.2v.1" />
+  </>
+)
+export const IconClock = make(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </>
+)

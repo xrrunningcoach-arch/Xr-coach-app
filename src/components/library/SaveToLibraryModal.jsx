@@ -50,7 +50,7 @@ export default function SaveToLibraryModal({ kind, defaultName, payload, onClose
       {done ? (
         <div className="space-y-4">
           <p className="text-sm">«{name}» está en tu biblioteca y puedes aplicarla a cualquier atleta desde la pestaña Biblioteca.</p>
-          <button type="button" onClick={onClose} className="px-4 py-2 bg-navy text-white text-sm font-semibold rounded-sm">
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-sm">
             Cerrar
           </button>
         </div>
@@ -76,7 +76,7 @@ export default function SaveToLibraryModal({ kind, defaultName, payload, onClose
           <p className="text-xs text-slate">Se guarda una copia sin datos del atleta (ni estados, ni notas, ni RPE real).</p>
           {error && <p className="text-red text-sm">{error}</p>}
           <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+            <button type="submit" disabled={saving} className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
               {saving ? 'Guardando…' : 'Guardar'}
             </button>
             <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm text-slate border border-mist rounded-sm hover:border-red hover:text-red">

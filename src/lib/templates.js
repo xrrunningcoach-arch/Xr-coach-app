@@ -319,3 +319,26 @@ export function buildApplication({ item, startDate, plan, existing, disciplines,
   result.application = out
   return result
 }
+
+// Convierte el resultado de buildApplication al JSON que espera la función SQL
+// apply_template_application (supabase/migrations/0005).
+export function applicationToRpc({ preview, plan, item }) {
+  const app = preview.application
+  return {
+    plan: {
+      id: plan?.id ?? null,
+      custom_race_name: item.name,
+      start_date: preview.planStart,
+      duration_weeks: Math.max(1, preview.lastWeek),
+    },
+    macrocycle: app.macrocycle || null,
+    use_macro_id: app.useMacroId || null,
+    mesocycles: app.mesocycles,
+    sessions: app.sessions.map((r) => ({
+      session: r.session,
+      exercises: r.exercises || [],
+      meso_key: r.mesoKey || null,
+      meso_id: r.mesoId || null,
+    })),
+  }
+}

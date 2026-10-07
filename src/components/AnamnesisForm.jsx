@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { useLang } from '../i18n'
 import { ANAMNESIS_QUESTIONS } from '../lib/anamnesis'
 
 // Carga las respuestas de un atleta. Devuelve { answers, answeredAt }.
@@ -17,6 +18,7 @@ async function fetchAnamnesis(athleteId) {
 // Vista de solo lectura (para el panel del entrenador)
 // ---------------------------------------------------------------------------
 export function AnamnesisReadOnly({ athleteId, refreshKey = 0 }) {
+  const { t, lang } = useLang()
   const [state, setState] = useState({ loading: true, answers: {}, answeredAt: null, error: null })
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export function AnamnesisReadOnly({ athleteId, refreshKey = 0 }) {
     }
   }, [athleteId, refreshKey])
 
-  if (state.loading) return <p className="text-sm text-slate">Cargando anamnesis…</p>
+  if (state.loading) return <p className="text-sm text-slate">{t('anam.loading')}</p>
   if (state.error) return <p className="text-sm text-red">{state.error}</p>
 
   const answered = ANAMNESIS_QUESTIONS.filter((q) => (state.answers[q.n] || '').trim() !== '').length
@@ -39,10 +41,8 @@ export function AnamnesisReadOnly({ athleteId, refreshKey = 0 }) {
     <div className="space-y-3">
       <p className="font-mono text-[11px] text-slate">
         {answered === 0
-          ? 'El atleta todavía no ha respondido el cuestionario.'
-          : `${answered} de ${ANAMNESIS_QUESTIONS.length} preguntas respondidas${
-              state.answeredAt ? ` · primera respuesta el ${new Date(state.answeredAt).toLocaleDateString('es-ES')}` : ''
-            }`}
+          ? t('anam.none')
+          : t('anam.progress', { done: answered, total: ANAMNESIS_QUESTIONS.length, since: state.answeredAt ? t('anam.since', { date: new Date(state.answeredAt).toLocaleDateString(lang === 'eu' ? 'eu-ES' : 'es-ES') }) : '' })}
       </p>
       <div className="divide-y divide-mist border border-mist rounded-sm">
         {ANAMNESIS_QUESTIONS.map((q) => {
@@ -50,10 +50,10 @@ export function AnamnesisReadOnly({ athleteId, refreshKey = 0 }) {
           return (
             <div key={q.n} className="px-4 py-3">
               <p className="text-sm font-semibold text-navy">
-                {q.n}. {q.es}
+                {q.n}. {q[lang]}
               </p>
               <p className="text-sm mt-1 whitespace-pre-wrap">
-                {value || <span className="text-slate italic">Sin respuesta</span>}
+                {value || <span className="text-slate italic">{t('anam.noAnswer')}</span>}
               </p>
             </div>
           )
@@ -67,6 +67,7 @@ export function AnamnesisReadOnly({ athleteId, refreshKey = 0 }) {
 // Formulario editable (atleta rellena la suya; el entrenador puede editarla)
 // ---------------------------------------------------------------------------
 export default function AnamnesisForm({ athleteId, basicProfile, onSaved }) {
+  const { t, lang } = useLang()
   const [answers, setAnswers] = useState({})
   const [answeredAt, setAnsweredAt] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -122,20 +123,20 @@ export default function AnamnesisForm({ athleteId, basicProfile, onSaved }) {
     if (onSaved) onSaved()
   }
 
-  if (loading) return <p className="text-sm text-slate">Cargando anamnesis…</p>
+  if (loading) return <p className="text-sm text-slate">{t('anam.loading')}</p>
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
       <p className="text-sm text-slate">
-        Responde con tus palabras (en castellano o euskera, como prefieras). Puedes guardar y volver a completarlo más tarde.
+        {t('anam.intro')}
       </p>
 
       {ANAMNESIS_QUESTIONS.map((q) => (
         <div key={q.n}>
           <label className="block text-sm font-semibold text-navy" htmlFor={`anamnesis-${q.n}`}>
-            {q.n}. {q.es}
+            {q.n}. {q[lang]}
           </label>
-          <p className="text-xs text-slate italic mb-1.5">{q.eu}</p>
+          <p className="text-xs text-slate italic mb-1.5">{lang === 'eu' ? q.es : q.eu}</p>
           {q.type === 'long' ? (
             <textarea
               id={`anamnesis-${q.n}`}
@@ -163,11 +164,11 @@ export default function AnamnesisForm({ athleteId, basicProfile, onSaved }) {
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+          className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
-          {saving ? 'Guardando…' : 'Guardar anamnesis'}
+          {saving ? t('common.saving') : t('anam.save')}
         </button>
-        {savedAt && <span className="text-sm text-navy-light font-mono">Guardado ✓</span>}
+        {savedAt && <span className="text-sm text-navy-light font-mono">{t('anam.saved')}</span>}
       </div>
     </form>
   )

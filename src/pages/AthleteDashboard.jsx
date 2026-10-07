@@ -7,6 +7,8 @@ import ZonesTable from '../components/ZonesTable'
 import AthleteCalendar from '../components/AthleteCalendar'
 import StatsDashboard from '../components/StatsDashboard'
 import GoalsView from '../components/GoalsView'
+import TodayView from '../components/TodayView'
+import { useT } from '../i18n'
 import useToday from '../components/calendar/useToday'
 import { sessionKm } from '../lib/stats'
 import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
@@ -14,8 +16,9 @@ import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
 // panel lateral (AthleteHome); este componente recibe la sección activa y
 // pinta su contenido. Las tarjetas de sesión (SessionCard) no han cambiado.
-export default function AthleteDashboard({ section = 'calendario', onNavigate }) {
-  const { user } = useAuth()
+export default function AthleteDashboard({ section = 'hoy', onNavigate, unread = 0 }) {
+  const { user, profile } = useAuth()
+  const t = useT()
   const today = useToday()
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState(null)
@@ -130,11 +133,9 @@ export default function AthleteDashboard({ section = 'calendario', onNavigate })
 
   if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones)) {
     return (
-      <div className="bg-white border border-mist rounded-sm p-8 text-center">
-        <h2 className="font-display text-xl text-navy mb-2">Todavía no tienes un plan asignado</h2>
-        <p className="text-slate text-sm">
-          Tu entrenador está preparando tu plan. En cuanto lo publique, aparecerá aquí.
-        </p>
+      <div className="bg-surface border border-mist rounded-sm p-8 text-center">
+        <h2 className="font-display text-xl text-navy mb-2">{t('today.noPlanTitle')}</h2>
+        <p className="text-slate text-sm">{t('today.noPlanBody')}</p>
       </div>
     )
   }
@@ -144,19 +145,34 @@ export default function AthleteDashboard({ section = 'calendario', onNavigate })
       {plan && (section === 'calendario' || section === 'estadisticas') && (
         <div className="bg-navy-deep text-white rounded-sm p-6 sm:p-8">
           <p className="font-mono text-xs text-red mb-2">
-            {race?.name || plan.custom_race_name || 'Plan personalizado'}
+            {race?.name || plan.custom_race_name || t('dash.customPlan')}
           </p>
-          <h1 className="font-display text-2xl sm:text-3xl mb-3">Tu plan de entrenamiento</h1>
-          <div className="grid sm:grid-cols-4 gap-4 mt-6 text-sm">
-            <Stat label="Duración" value={`${plan.duration_weeks} semanas`} />
-            <Stat label="Ritmo objetivo" value={plan.target_pace || '—'} />
-            <Stat label="Km completados" value={`${progress.doneKm.toFixed(1)} / ${progress.totalKm.toFixed(1)}`} />
-            <Stat label="Sesiones completadas" value={`${progress.doneSessions} / ${progress.totalSessions}`} />
+          <h1 className="font-display text-2xl sm:text-3xl mb-3">{t('dash.planTitle')}</h1>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm">
+            <Stat label={t('dash.duration')} value={t('dash.weeks', { count: plan.duration_weeks })} />
+            <Stat label={t('dash.targetPace')} value={plan.target_pace || '—'} />
+            <Stat label={t('dash.kmDone')} value={`${progress.doneKm.toFixed(1)} / ${progress.totalKm.toFixed(1)}`} />
+            <Stat label={t('dash.sessionsDone')} value={`${progress.doneSessions} / ${progress.totalSessions}`} />
           </div>
         </div>
       )}
 
       {error && <p className="text-red text-sm">{error}</p>}
+
+      {section === 'hoy' && (
+        <TodayView
+          today={today}
+          profile={profile}
+          plan={plan}
+          race={race}
+          sessions={sessions}
+          disciplines={disciplines}
+          evaluationsBySession={evaluationsBySession}
+          unread={unread}
+          onUpdated={() => loadData(true)}
+          onNavigate={onNavigate || (() => {})}
+        />
+      )}
 
       {section === 'calendario' && (
         <AthleteCalendar
@@ -200,34 +216,36 @@ function Stat({ label, value }) {
 }
 
 function HrZonesView({ hrZones, manualZones }) {
+  const t = useT()
   const hasManual = Object.keys(manualZones).length > 0
-  if (!hrZones && !hasManual) return <EmptyState text="Tu entrenador aún no ha configurado tus zonas de frecuencia cardíaca." />
+  if (!hrZones && !hasManual) return <EmptyState text={t('zones.empty')} />
   const used = hrZones ? effectiveMaxHr({ maxHrReal: hrZones.max_hr_real, age: hrZones.age }) : { value: null, source: null }
   return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} />
 }
 
 function TestsView({ tests }) {
-  if (!tests.length) return <EmptyState text="Todavía no hay test o marcas registradas." />
+  const t = useT()
+  if (!tests.length) return <EmptyState text={t('tests.empty')} />
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-x-auto">
+    <div className="bg-surface border border-mist rounded-sm overflow-x-auto">
       <table className="w-full text-sm min-w-[720px]">
         <thead className="bg-bg-dim">
           <tr>
-            {['Fecha', 'Bloque', 'Tipo de test', 'Distancia', 'Resultado', 'Ritmo', 'Observaciones'].map((h) => (
+            {['date', 'block', 'type', 'distance', 'result', 'pace', 'notes'].map((h) => t('tests.col.' + h)).map((h) => (
               <th key={h} className="text-left px-4 py-3 font-mono text-xs text-slate">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-mist">
-          {tests.map((t) => (
-            <tr key={t.id}>
-              <td className="px-4 py-3 font-mono text-xs">{t.test_date || '—'}</td>
-              <td className="px-4 py-3">{t.block_label}</td>
-              <td className="px-4 py-3">{t.test_type}</td>
-              <td className="px-4 py-3">{t.distance}</td>
-              <td className="px-4 py-3 font-mono">{t.result}</td>
-              <td className="px-4 py-3 font-mono">{t.pace}</td>
-              <td className="px-4 py-3 text-slate">{t.observations}</td>
+          {tests.map((row) => (
+            <tr key={row.id}>
+              <td className="px-4 py-3 font-mono text-xs">{row.test_date || '—'}</td>
+              <td className="px-4 py-3">{row.block_label}</td>
+              <td className="px-4 py-3">{row.test_type}</td>
+              <td className="px-4 py-3">{row.distance}</td>
+              <td className="px-4 py-3 font-mono">{row.result}</td>
+              <td className="px-4 py-3 font-mono">{row.pace}</td>
+              <td className="px-4 py-3 text-slate">{row.observations}</td>
             </tr>
           ))}
         </tbody>
@@ -237,5 +255,5 @@ function TestsView({ tests }) {
 }
 
 function EmptyState({ text }) {
-  return <div className="bg-white border border-mist rounded-sm p-8 text-center text-slate text-sm">{text}</div>
+  return <div className="bg-surface border border-mist rounded-sm p-8 text-center text-slate text-sm">{text}</div>
 }

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
+import { getLang, useT } from '../i18n'
 
 function formatTime(iso) {
   const d = new Date(iso)
-  const day = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
-  const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  const day = d.toLocaleDateString(getLang() === 'eu' ? 'eu-ES' : 'es-ES', { day: '2-digit', month: '2-digit' })
+  const time = d.toLocaleTimeString(getLang() === 'eu' ? 'eu-ES' : 'es-ES', { hour: '2-digit', minute: '2-digit' })
   return `${day} ${time}`
 }
 
@@ -14,6 +15,7 @@ function formatTime(iso) {
 // estuviera activado, también consulta cada 15 segundos.
 export default function ChatPanel({ athleteId, otherName }) {
   const { user } = useAuth()
+  const t = useT()
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -97,29 +99,29 @@ export default function ChatPanel({ athleteId, otherName }) {
   }
 
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-hidden max-w-3xl">
+    <div className="bg-surface border border-mist rounded-lg overflow-hidden max-w-3xl">
       <div className="px-5 py-3 bg-bg-dim">
-        <h3 className="font-display text-lg text-navy">Chat con {otherName || 'tu entrenador'}</h3>
+        <h3 className="font-display text-lg text-navy">{t('chat.title', { name: otherName || t('chat.theCoach') })}</h3>
       </div>
 
       <div ref={listRef} className="h-96 overflow-y-auto px-4 py-4 space-y-3 bg-bg">
-        {loading && <p className="text-sm text-slate">Cargando mensajes…</p>}
+        {loading && <p className="text-sm text-slate">{t('chat.loading')}</p>}
         {!loading && messages.length === 0 && (
-          <p className="text-sm text-slate">Todavía no hay mensajes. Escribe el primero.</p>
+          <p className="text-sm text-slate">{t('chat.empty')}</p>
         )}
         {messages.map((m) => {
           const mine = m.sender_id === user?.id
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[80%] rounded-sm px-3 py-2 text-sm ${
-                  mine ? 'bg-navy text-white' : 'bg-white border border-mist text-ink'
+                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                  mine ? 'bg-primary text-white' : 'bg-surface border border-mist text-ink'
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words">{m.body}</p>
                 <p className={`font-mono text-[10px] mt-1 ${mine ? 'text-white/60' : 'text-slate'}`}>
                   {formatTime(m.created_at)}
-                  {mine && m.read_at ? ' · leído' : ''}
+                  {mine && m.read_at ? t('chat.read') : ''}
                 </p>
               </div>
             </div>
@@ -136,15 +138,15 @@ export default function ChatPanel({ athleteId, otherName }) {
           onKeyDown={handleKeyDown}
           rows={2}
           maxLength={2000}
-          placeholder="Escribe un mensaje… (Intro para enviar, Mayús+Intro para salto de línea)"
-          className="flex-1 border border-mist rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-navy resize-none"
+          placeholder={t('chat.placeholder')}
+          className="flex-1 border border-mist rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy resize-none"
         />
         <button
           type="submit"
           disabled={sending || !text.trim()}
-          className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-50"
+          className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-lg disabled:opacity-50"
         >
-          {sending ? 'Enviando…' : 'Enviar'}
+          {sending ? t('chat.sending') : t('chat.send')}
         </button>
       </form>
     </div>

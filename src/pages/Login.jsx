@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useT } from '../i18n'
+import AuthShell from '../components/AuthShell'
 
 export default function Login() {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -23,53 +26,51 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-deep px-5">
-      <div className="w-full max-w-sm bg-white rounded-sm shadow-sm p-8">
-        <h1 className="font-display text-2xl text-navy mb-1">XR Running Coach</h1>
-        <p className="text-sm text-slate mb-6">Accede a tu panel de entrenamiento.</p>
+    <AuthShell>
+      <p className="text-sm text-slate mb-5">{t('auth.loginSubtitle')}</p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.email')}</span>
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-mist rounded-md px-3 py-3 text-base focus:outline-none focus:border-navy-light"
+            placeholder="tu@ejemplo.com"
+          />
+        </label>
+        <label className="block">
+          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.password')}</span>
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-mist rounded-md px-3 py-3 text-base focus:outline-none focus:border-navy-light"
+            placeholder="••••••••"
+          />
+        </label>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Correo electrónico</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-mist rounded-sm px-3 py-2.5 focus:outline-none focus:border-navy"
-              placeholder="tu@ejemplo.com"
-            />
-          </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-mist rounded-sm px-3 py-2.5 focus:outline-none focus:border-navy"
-              placeholder="••••••••"
-            />
-          </div>
+        {error && <p role="alert" className="text-sm text-red">{error}</p>}
 
-          {error && <p className="text-sm text-red">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-brand hover:bg-brand-deep transition-colors text-white font-semibold py-3 rounded-md disabled:opacity-60"
+        >
+          {loading ? t('auth.signingIn') : t('auth.signIn')}
+        </button>
+      </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-red hover:bg-red-deep transition-colors text-white font-semibold py-2.5 rounded-sm disabled:opacity-60"
-          >
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
-        </form>
-
-        <p className="text-sm text-slate mt-6 text-center">
-          ¿Aún no tienes cuenta?{' '}
-          <Link to="/signup" className="text-navy font-semibold hover:text-red">
-            Regístrate
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="text-sm text-slate mt-6 text-center">
+        {t('auth.noAccount')}{' '}
+        <Link to="/signup" className="text-navy font-semibold hover:text-red">
+          {t('auth.signUp')}
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

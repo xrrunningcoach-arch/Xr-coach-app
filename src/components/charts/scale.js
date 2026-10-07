@@ -11,4 +11,4 @@ export function ticks(max, count = 4) {
   return Array.from({ length: count + 1 }, (_, i) => (max / count) * i)
 }
 
-export const INK = { grid: '#e6eee9', axis: '#c5d3cb', text: '#4a554f', muted: '#7b8a82' }
+export const INK = { grid: 'var(--chart-grid)', axis: 'var(--chart-axis)', text: 'var(--chart-text)', muted: 'var(--chart-muted)' }

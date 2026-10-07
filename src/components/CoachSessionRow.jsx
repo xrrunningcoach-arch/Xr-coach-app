@@ -9,6 +9,7 @@ import { cycleForDate } from '../lib/cycles'
 import StatusBadge from './StatusBadge'
 import DisciplineFields from './DisciplineFields'
 import StrengthExercises from './StrengthExercises'
+import { ui } from '../ui/ui'
 
 // Fila de edición de una sesión (vista del entrenador). Movida desde
 // CoachAthlete.jsx para poder usarla también desde el calendario; añade el
@@ -56,14 +57,14 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
       })
       .eq('id', session.id)
     setSaving(false)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onChanged()
   }
 
   async function handleDelete() {
-    if (!confirm('¿Eliminar esta sesión?')) return
+    if (!(await ui.confirm('¿Eliminar esta sesión?', { danger: true, confirmLabel: 'Eliminar' }))) return
     const { error } = await supabase.from('sessions').delete().eq('id', session.id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onChanged()
   }
 
@@ -91,12 +92,12 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           onChange={(e) => setDate(e.target.value)}
           aria-label="Fecha de la sesión en el calendario"
           title="Fecha en el calendario del atleta"
-          className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+          className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
         />
         <select
           value={disciplineId}
           onChange={(e) => setDisciplineId(e.target.value)}
-          className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+          className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
         >
           <option value="">Disciplina…</option>
           {disciplines.map((d) => (
@@ -176,7 +177,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           <button
             onClick={handleSave}
             disabled={saving}
-            className="text-xs font-semibold text-white bg-navy hover:bg-navy-deep px-3 py-1.5 rounded-sm disabled:opacity-60 w-full sm:w-auto"
+            className="text-xs font-semibold text-white bg-primary hover:bg-primary-hover px-3 py-1.5 rounded-sm disabled:opacity-60 w-full sm:w-auto"
           >
             {saving ? 'Guardando…' : 'Guardar'}
           </button>
@@ -226,7 +227,7 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
     })
     setSaving(false)
     if (error) {
-      alert(error.message)
+      ui.error(error.message)
       return
     }
     setComment('')
@@ -263,7 +264,7 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
         <button
           onClick={handleAdd}
           disabled={saving || !comment}
-          className="text-xs font-semibold text-white bg-red hover:bg-red-deep px-3 py-1.5 rounded-sm disabled:opacity-60"
+          className="text-xs font-semibold text-white bg-brand hover:bg-brand-deep px-3 py-1.5 rounded-sm disabled:opacity-60"
         >
           Añadir valoración
         </button>

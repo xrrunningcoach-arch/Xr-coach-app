@@ -44,7 +44,7 @@ export default function ColumnChart({ data, series, format = (v) => String(v), a
 
         {data.map((d, i) => (
           <g key={d.label + i}>
-            {d.current && <rect x={m.l + band * i} y={m.t} width={band} height={innerH} fill="#c1392b" opacity="0.06" />}
+            {d.current && <rect x={m.l + band * i} y={m.t} width={band} height={innerH} fill="var(--chart-accent)" opacity="0.1" />}
             {series.map((s, si) => (
               <path key={s.key} d={barPath(x0(i) + si * (barW + 2), barW, y(d[s.key] || 0), y(0))} fill={s.color} />
             ))}
@@ -54,7 +54,7 @@ export default function ColumnChart({ data, series, format = (v) => String(v), a
                 y={H - 14}
                 textAnchor="middle"
                 fontSize="10"
-                fill={d.current ? '#c1392b' : INK.text}
+                fill={d.current ? 'var(--chart-accent)' : INK.text}
                 fontWeight={d.current ? 700 : 400}
                 fontFamily="JetBrains Mono, monospace"
               >

@@ -3,16 +3,17 @@ import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
 import { dateForWeekday, mondayOf, shortDate } from '../lib/dates'
 import { cycleDatesFromWeeks, cycleRange, cycleWeeksFromDates, overlappingCycles } from '../lib/cycles'
+import { ui } from '../ui/ui'
 
 // Semáforo de macrociclos y mesociclos: rojo = pendiente, ámbar = en curso,
 // verde = completado. Se cambia a mano.
 const CYCLE_STATUS = {
-  pendiente: { label: 'Pendiente', color: '#c1392b' },
-  en_curso: { label: 'En curso', color: '#d99a1e' },
-  completado: { label: 'Completado', color: '#2e8b57' },
+  pendiente: { label: 'Pendiente', color: 'var(--st-pend)' },
+  en_curso: { label: 'En curso', color: 'var(--st-curso)' },
+  completado: { label: 'Completado', color: 'var(--st-done)' },
 }
 const STATUS_ORDER = ['pendiente', 'en_curso', 'completado']
-const GREY = '#9aa8a1'
+const GREY = 'var(--chart-muted)'
 
 function Dot({ color, size = 12 }) {
   return (
@@ -26,7 +27,7 @@ function Dot({ color, size = 12 }) {
 
 function StatusPicker({ value, onChange, disabled }) {
   return (
-    <div role="group" aria-label="Estado" className="inline-flex border border-mist rounded-sm overflow-hidden bg-white">
+    <div role="group" aria-label="Estado" className="inline-flex border border-mist rounded-sm overflow-hidden bg-surface">
       {STATUS_ORDER.map((key) => {
         const st = CYCLE_STATUS[key]
         const active = value === key
@@ -42,7 +43,7 @@ function StatusPicker({ value, onChange, disabled }) {
               active ? 'bg-bg-dim font-semibold text-navy' : 'text-slate hover:bg-bg'
             }`}
           >
-            <Dot color={active ? st.color : '#d7e3dd'} size={10} />
+            <Dot color={active ? st.color : 'var(--st-idle)'} size={10} />
             <span className={active ? '' : 'hidden sm:inline'}>{st.label}</span>
           </button>
         )
@@ -78,7 +79,7 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
   const [startDate, setStartDate] = useState(initial.start_date || '')
   const [endDate, setEndDate] = useState(initial.end_date || '')
   return (
-    <div className="bg-white border-2 border-navy rounded-sm p-4 space-y-3">
+    <div className="bg-surface border-2 border-navy rounded-sm p-4 space-y-3">
       <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar macrociclo' : 'Nuevo macrociclo'}</h4>
       <div>
         <label className={labelCls}>Nombre</label>
@@ -104,7 +105,7 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
           type="button"
           disabled={busy}
           onClick={() => onSave({ ...initial, name, objective, start_date: startDate, end_date: endDate })}
-          className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
           Guardar
         </button>
@@ -145,7 +146,7 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
     }
   }
   return (
-    <div className="bg-white border-2 border-navy rounded-sm p-4 space-y-3">
+    <div className="bg-surface border-2 border-navy rounded-sm p-4 space-y-3">
       <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar mesociclo' : 'Nuevo mesociclo'}</h4>
       <div>
         <label className={labelCls}>Nombre</label>
@@ -178,7 +179,7 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
       </p>
       <div>
         <label className={labelCls}>Macrociclo</label>
-        <select value={macroId} onChange={(e) => setMacroId(e.target.value)} className={`${inputCls} bg-white`}>
+        <select value={macroId} onChange={(e) => setMacroId(e.target.value)} className={`${inputCls} bg-surface`}>
           <option value="">Sin macrociclo</option>
           {macros.map((mc) => (
             <option key={mc.id} value={mc.id}>{mc.name}</option>
@@ -198,7 +199,7 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
           type="button"
           disabled={busy}
           onClick={() => onSave({ ...initial, name, macrocycle_id: macroId, week_start: weekStart, week_end: weekEnd, start_date: startDate, end_date: endDate, focus, key_objective: keyObjective })}
-          className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
           Guardar
         </button>
@@ -290,7 +291,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     const { error } = await request
     setBusy(false)
     if (error) {
-      alert(error.message)
+      ui.error(error.message)
       return false
     }
     await onReload(true)
@@ -306,7 +307,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     let start_date = f.start_date || null
     let end_date = f.end_date || null
     if (start_date && end_date && end_date < start_date) {
-      alert('La fecha de fin no puede ser anterior a la de inicio.')
+      ui.error('La fecha de fin no puede ser anterior a la de inicio.')
       return
     }
     // Sin fechas propias, el macrociclo abarca las de sus mesociclos.
@@ -328,7 +329,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   async function deleteMacro(mc) {
     const count = (mesosByMacro[mc.id] || []).length
     const extra = count > 0 ? ` Sus ${count} mesociclos NO se borran: pasarán a "Sin macrociclo".` : ''
-    if (!confirm(`¿Eliminar el macrociclo "${mc.name}"?${extra}`)) return
+    if (!(await ui.confirm(`¿Eliminar el macrociclo "${mc.name}"?${extra}`, { danger: true, confirmLabel: 'Eliminar' }))) return
     await run(supabase.from('macrocycles').delete().eq('id', mc.id))
   }
 
@@ -338,7 +339,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     let start_date = f.start_date || null
     let end_date = f.end_date || null
     if (start_date && end_date && end_date < start_date) {
-      alert('La fecha de fin no puede ser anterior a la de inicio.')
+      ui.error('La fecha de fin no puede ser anterior a la de inicio.')
       return
     }
 
@@ -348,7 +349,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       planStart = mondayOf(start_date)
       const { error } = await supabase.from('training_plans').update({ start_date: planStart }).eq('id', plan.id)
       if (error) {
-        alert(error.message)
+        ui.error(error.message)
         return
       }
     }
@@ -356,7 +357,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     if (planStart && start_date && end_date) {
       const w = cycleWeeksFromDates(planStart, start_date, end_date)
       if (!w) {
-        alert(`Las fechas deben ser iguales o posteriores al inicio del plan (semana del ${planStart}).`)
+        ui.error(`Las fechas deben ser iguales o posteriores al inicio del plan (semana del ${planStart}).`)
         return
       }
       weekStart = w.week_start
@@ -368,12 +369,12 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     }
 
     if (!Number.isInteger(weekStart) || !Number.isInteger(weekEnd) || weekStart < 1 || weekEnd < weekStart || weekEnd > 104) {
-      alert('Revisa las semanas: deben ser números enteros, la final igual o mayor que la inicial.')
+      ui.error('Revisa las semanas: deben ser números enteros, la final igual o mayor que la inicial.')
       return
     }
 
     const clash = overlappingCycles(mesocycles, start_date && end_date ? [start_date, end_date] : null, planStart, f.id)
-    if (clash.length && !confirm(`Estas fechas se solapan con: ${clash.map((c) => c.name).join(', ')}. ¿Guardar igualmente?`)) return
+    if (clash.length && !(await ui.confirm(`Estas fechas se solapan con: ${clash.map((c) => c.name).join(', ')}. ¿Guardar igualmente?`, { confirmLabel: 'Guardar igualmente' }))) return
 
     const order = f.id ? f.order_index : nextMesoOrder
     const payload = {
@@ -408,7 +409,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   }
 
   async function deleteMeso(m) {
-    if (!confirm(`¿Eliminar el mesociclo "${m.name}"? Sus sesiones NO se borran (se conservan en "Plan y sesiones").`)) return
+    if (!(await ui.confirm(`¿Eliminar el mesociclo "${m.name}"? Sus sesiones NO se borran (se conservan en "Plan y sesiones").`, { danger: true, confirmLabel: 'Eliminar' }))) return
     await run(supabase.from('mesocycles').delete().eq('id', m.id))
   }
 
@@ -451,7 +452,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     const done = items.filter((s) => s.status === 'completado').length
     const km = items.reduce((sum, s) => sum + (Number(s.km_estimated) || 0), 0)
     return (
-      <div key={key} className="border border-mist rounded-sm bg-white">
+      <div key={key} className="border border-mist rounded-sm bg-surface">
         <button
           type="button"
           onClick={() => toggleIn(setOpenWeeks, key)}
@@ -579,14 +580,14 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
           <button
             type="button"
             onClick={() => setForm({ kind: 'macro', placeholder: `Macrociclo ${nextMacroOrder}` })}
-            className="px-3 py-2 bg-red hover:bg-red-deep text-white text-xs font-semibold rounded-sm"
+            className="px-3 py-2 bg-brand hover:bg-brand-deep text-white text-xs font-semibold rounded-sm"
           >
             + Macrociclo
           </button>
           <button
             type="button"
             onClick={() => setForm(newMesoDefaults(sortedMacros[0]?.id))}
-            className="px-3 py-2 bg-navy hover:bg-navy-deep text-white text-xs font-semibold rounded-sm"
+            className="px-3 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-sm"
           >
             + Mesociclo
           </button>
@@ -612,7 +613,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       )}
 
       {sortedMacros.length === 0 && orphanMesos.length === 0 && (
-        <p className="text-sm text-slate bg-white border border-mist rounded-sm p-5">
+        <p className="text-sm text-slate bg-surface border border-mist rounded-sm p-5">
           Todavía no hay macrociclos ni mesociclos. Pulsa «+ Macrociclo» para empezar.
         </p>
       )}
@@ -625,7 +626,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
         const stats = mesos.length ? rangeStats(Math.min(...starts), Math.max(...ends)) : { total: 0, done: 0 }
         const color = (CYCLE_STATUS[mc.status] || CYCLE_STATUS.pendiente).color
         return (
-          <div key={mc.id} className="bg-white border border-mist rounded-sm">
+          <div key={mc.id} className="bg-surface border border-mist rounded-sm">
             <div className="px-4 py-3 flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -676,7 +677,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       })}
 
       {orphanMesos.length > 0 && (
-        <div className="bg-white border border-mist rounded-sm p-4 space-y-3">
+        <div className="bg-surface border border-mist rounded-sm p-4 space-y-3">
           <h4 className="font-display text-lg text-navy">Sin macrociclo</h4>
           <p className="text-xs text-slate">Estos mesociclos no pertenecen a ningún macrociclo. Edítalos para asignarles uno.</p>
           {orphanMesos.map(renderMeso)}

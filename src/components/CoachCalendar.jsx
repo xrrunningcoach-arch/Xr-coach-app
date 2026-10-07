@@ -26,6 +26,7 @@ import {
   weekNumberFor,
   weekRangeTitle,
 } from '../lib/dates'
+import { ui } from '../ui/ui'
 
 const VIEWS = [
   { id: 'week', label: 'Semana' },
@@ -91,7 +92,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
   // ---- Plan sin fecha de inicio: sin ella no se puede colocar nada ----
   if (!planStart) {
     return (
-      <div className="bg-white border border-mist rounded-sm p-6 space-y-3 max-w-xl">
+      <div className="bg-surface border border-mist rounded-sm p-6 space-y-3 max-w-xl">
         <h2 className="font-display text-xl text-navy">Falta la fecha de inicio del plan</h2>
         <p className="text-sm text-slate">
           El calendario necesita saber cuándo empieza la semana 1 para colocar las sesiones en sus días. Si el plan ya tiene sesiones, se colocarán según su semana y su «Día N» (Día 1 = lunes).
@@ -102,7 +103,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
             type="button"
             disabled={!startInput || busy}
             onClick={() => setPlanStart(startInput)}
-            className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
           >
             Fijar inicio y colocar sesiones
           </button>
@@ -116,7 +117,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
     const { error } = await supabase.from('training_plans').update({ start_date: dateISO }).eq('id', plan.id)
     if (error) {
       setBusy(false)
-      alert(error.message)
+      ui.error(error.message)
       return
     }
     await placeUndated(dateISO)
@@ -136,7 +137,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
       )
     )
     const failed = results.find((r) => r.error)
-    if (failed) alert(failed.error.message)
+    if (failed) ui.error(failed.error.message)
   }
 
   async function handlePlaceUndated() {
@@ -167,7 +168,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
       .single()
     if (error) {
       setBusy(false)
-      alert(error.message)
+      ui.error(error.message)
       return
     }
     // El plan crece si la sesión cae después de su última semana.
@@ -184,7 +185,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
     const s = sessions.find((x) => x.id === sessionId)
     if (!s || s.session_date === iso) return
     if (weekNumberFor(iso, planStart) < 1) {
-      alert(`Esa fecha es anterior al inicio del plan (${planStart}).`)
+      ui.error(`Esa fecha es anterior al inicio del plan (${planStart}).`)
       return
     }
     setBusy(true)
@@ -192,7 +193,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
     const meso = cycleForDate(mesocycles, iso, planStart)
     if (meso) placement.mesocycle_id = meso.id
     const { error } = await supabase.from('sessions').update({ ...placement, updated_at: new Date().toISOString() }).eq('id', sessionId)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else if (placement.week_number > plan.duration_weeks) {
       await supabase.from('training_plans').update({ duration_weeks: placement.week_number }).eq('id', plan.id)
     }
@@ -277,7 +278,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
       }}
       aria-label={`Añadir sesión el ${longDayTitle(iso)}`}
       title="Añadir sesión"
-      className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-slate hover:bg-navy hover:text-white opacity-60 hover:opacity-100 focus:opacity-100 transition-colors disabled:opacity-30"
+      className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-slate hover:bg-primary hover:text-white opacity-60 hover:opacity-100 focus:opacity-100 transition-colors disabled:opacity-30"
     >
       <IconPlus width={14} height={14} />
     </button>
@@ -293,7 +294,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
   function renderWeek() {
     const days = weekDays(weekMonday)
     return (
-      <div className="bg-white border border-mist rounded-sm overflow-hidden">
+      <div className="bg-surface border border-mist rounded-sm overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-7">
           {days.map((iso, i) => {
             const list = byDate.get(iso) || []
@@ -310,7 +311,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <span className="font-mono text-[11px] text-slate uppercase">{WEEKDAY_SHORT[i]}</span>
-                    <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1 rounded-full font-display text-sm ${isToday ? 'bg-red text-white' : 'text-navy'}`}>
+                    <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1 rounded-full font-display text-sm ${isToday ? 'bg-brand text-white' : 'text-navy'}`}>
                       {dayNumber(iso)}
                     </span>
                   </span>
@@ -381,7 +382,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
           <button
             type="button"
             onClick={() => setImporting(true)}
-            className="px-3 py-2 text-sm font-semibold bg-navy hover:bg-navy-deep text-white rounded-sm"
+            className="px-3 py-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm"
           >
             Importar de la biblioteca
           </button>
@@ -393,7 +394,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
       </p>
 
       {undated.length > 0 && (
-        <div className="bg-white border border-mist rounded-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface border border-mist rounded-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm">
             <strong>{undated.length}</strong> {undated.length === 1 ? 'sesión no tiene' : 'sesiones no tienen'} día asignado y el atleta las ve en «Sin día asignado».
           </p>
@@ -401,7 +402,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
             type="button"
             disabled={busy}
             onClick={handlePlaceUndated}
-            className="px-3 py-2 text-xs font-semibold bg-navy hover:bg-navy-deep text-white rounded-sm disabled:opacity-60"
+            className="px-3 py-2 text-xs font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm disabled:opacity-60"
           >
             Colocar según su semana y día
           </button>
@@ -411,7 +412,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
       {view === 'week' ? renderWeek() : renderMonth()}
 
       {selected ? (
-        <div className="bg-white border-2 border-navy rounded-sm">
+        <div className="bg-surface border-2 border-navy rounded-sm">
           <div className="px-5 py-3 bg-bg-dim flex items-center justify-between gap-3">
             <h3 className="font-display text-lg text-navy">
               {selected.session_date ? longDayTitle(selected.session_date) : 'Sesión sin día asignado'}
@@ -432,7 +433,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
         </div>
       ) : (
         undated.length > 0 && (
-          <div className="bg-white border border-mist rounded-sm">
+          <div className="bg-surface border border-mist rounded-sm">
             <div className="px-5 py-3 bg-bg-dim">
               <h3 className="font-display text-lg text-navy">Sin día asignado</h3>
             </div>

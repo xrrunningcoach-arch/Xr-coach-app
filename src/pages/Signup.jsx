@@ -1,25 +1,61 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useT } from '../i18n'
+import AuthShell from '../components/AuthShell'
+
+// El enlace de invitación puede traer el código: #/signup?code=XR-AB12CD34
+function codeFromUrl() {
+  try {
+    const q = window.location.hash.split('?')[1] || ''
+    return (new URLSearchParams(q).get('code') || '').trim()
+  } catch {
+    return ''
+  }
+}
 
 export default function Signup() {
+  const t = useT()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState(codeFromUrl)
+  const [inviteRequired, setInviteRequired] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+
+  // ¿El entrenador exige código de invitación? Si la migración 0005 aún no
+  // está aplicada, la llamada falla y simplemente no se pide código.
+  useEffect(() => {
+    let alive = true
+    supabase.rpc('invite_required').then(({ data, error: err }) => {
+      if (alive && !err) setInviteRequired(data === true)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
+    if (inviteRequired) {
+      const { data: ok, error: chkErr } = await supabase.rpc('check_invite_code', { p_code: inviteCode.trim() })
+      if (chkErr || ok !== true) {
+        setLoading(false)
+        setError(chkErr ? chkErr.message : t('auth.inviteInvalid'))
+        return
+      }
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName, invite_code: inviteRequired ? inviteCode.trim() : undefined } },
     })
 
     setLoading(false)
@@ -29,8 +65,7 @@ export default function Signup() {
       return
     }
 
-    // Si el proyecto de Supabase tiene confirmación por email activada,
-    // no habrá sesión todavía y hay que avisar al usuario.
+    // Con confirmación por email activada no hay sesión todavía.
     if (!data.session) {
       setDone(true)
       return
@@ -41,82 +76,58 @@ export default function Signup() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-navy-deep px-5">
-        <div className="w-full max-w-sm bg-white rounded-sm shadow-sm p-8 text-center">
-          <h1 className="font-display text-xl text-navy mb-3">Revisa tu correo</h1>
-          <p className="text-sm text-slate mb-6">
-            Te hemos enviado un enlace de confirmación. Confírmalo y después inicia sesión.
-          </p>
+      <AuthShell>
+        <div className="text-center">
+          <h1 className="font-display text-xl text-navy mb-3">{t('auth.checkEmailTitle')}</h1>
+          <p className="text-sm text-slate mb-6">{t('auth.checkEmailBody')}</p>
           <Link to="/login" className="text-navy font-semibold hover:text-red text-sm">
-            Ir a iniciar sesión
+            {t('auth.goLogin')}
           </Link>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
+  const field = 'w-full border border-mist rounded-md px-3 py-3 text-base focus:outline-none focus:border-navy-light'
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-deep px-5">
-      <div className="w-full max-w-sm bg-white rounded-sm shadow-sm p-8">
-        <h1 className="font-display text-2xl text-navy mb-1">Crear cuenta</h1>
-        <p className="text-sm text-slate mb-6">
-          Regístrate como atleta. Tu entrenador te asignará un plan una vez creada la cuenta.
-        </p>
+    <AuthShell>
+      <h1 className="font-display text-xl text-navy mb-1">{t('auth.createAccount')}</h1>
+      <p className="text-sm text-slate mb-5">{t('auth.signupSubtitle')}</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Nombre completo</label>
-            <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full border border-mist rounded-sm px-3 py-2.5 focus:outline-none focus:border-navy"
-              placeholder="Tu nombre"
-            />
-          </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Correo electrónico</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-mist rounded-sm px-3 py-2.5 focus:outline-none focus:border-navy"
-              placeholder="tu@ejemplo.com"
-            />
-          </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Contraseña</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-mist rounded-sm px-3 py-2.5 focus:outline-none focus:border-navy"
-              placeholder="Mínimo 6 caracteres"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.fullName')}</span>
+          <input type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
+        </label>
+        <label className="block">
+          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.email')}</span>
+          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} placeholder="tu@ejemplo.com" />
+        </label>
+        <label className="block">
+          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.password')}</span>
+          <input type="password" required minLength={6} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} placeholder={t('auth.passwordHint')} />
+        </label>
+        {inviteRequired && (
+          <label className="block">
+            <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.inviteCode')}</span>
+            <input type="text" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className={`${field} font-mono uppercase`} placeholder="XR-XXXXXXXX" autoCapitalize="characters" />
+            <span className="block text-xs text-slate mt-1">{t('auth.inviteHelp')}</span>
+          </label>
+        )}
 
-          {error && <p className="text-sm text-red">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-navy hover:bg-navy-deep transition-colors text-white font-semibold py-2.5 rounded-sm disabled:opacity-60"
-          >
-            {loading ? 'Creando cuenta…' : 'Crear cuenta'}
-          </button>
-        </form>
+        <button type="submit" disabled={loading} className="w-full bg-brand hover:bg-brand-deep transition-colors text-white font-semibold py-3 rounded-md disabled:opacity-60">
+          {loading ? t('auth.creating') : t('auth.createAccount')}
+        </button>
+      </form>
 
-        <p className="text-sm text-slate mt-6 text-center">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="text-navy font-semibold hover:text-red">
-            Inicia sesión
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="text-sm text-slate mt-6 text-center">
+        {t('auth.hasAccount')}{' '}
+        <Link to="/login" className="text-navy font-semibold hover:text-red">
+          {t('auth.signIn')}
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

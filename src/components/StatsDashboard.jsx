@@ -4,6 +4,7 @@ import ColumnChart from './charts/ColumnChart'
 import HBars from './charts/HBars'
 import LineChart from './charts/LineChart'
 import useToday from './calendar/useToday'
+import { getLang, tr, useT } from '../i18n'
 import { disciplineColor } from '../lib/disciplineColors'
 import { addDays, mondayOf, shortDate, longDayTitle } from '../lib/dates'
 import {
@@ -20,20 +21,20 @@ import {
   weeklySeries,
 } from '../lib/stats'
 
-const nf = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 })
-const nf0 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 })
-const fmtKm = (v) => nf.format(Math.round(v * 10) / 10)
-const fmtM = (v) => nf0.format(Math.round(v))
-const fmtHours = (min) => nf.format(Math.round((min / 60) * 10) / 10)
+const loc = () => (getLang() === 'eu' ? 'eu-ES' : 'es-ES')
+const fmtKm = (v) => new Intl.NumberFormat(loc(), { maximumFractionDigits: 1 }).format(Math.round(v * 10) / 10)
+const fmtM = (v) => new Intl.NumberFormat(loc(), { maximumFractionDigits: 0 }).format(Math.round(v))
+const fmtHours = (min) => new Intl.NumberFormat(loc(), { maximumFractionDigits: 1 }).format(Math.round((min / 60) * 10) / 10)
 
 // Colores de las series de tiempo y desnivel: un solo tono (verde XR), claro =
 // programado, oscuro = completado.
-const DONE = '#25534b'
-const PLANNED = '#a9c7bb'
+const DONE = 'var(--chart-done)'
+const PLANNED = 'var(--chart-planned)'
 
 // Dashboard "Estadísticas" del atleta. Tres métricas, cada una con gráfico,
 // detalle y tabla de datos: km por disciplina, tiempo semanal y desnivel +.
 export default function StatsDashboard({ sessions, disciplines }) {
+  const t = useT()
   const today = useToday()
   const [rangeKey, setRangeKey] = useState('plan')
 
@@ -64,7 +65,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
   if (!hasAny) {
     return (
       <ChartEmpty>
-        Todavía no hay sesiones en tu plan. Cuando tu entrenador las programe, aquí verás tus kilómetros, tu tiempo de entrenamiento y tu desnivel.
+        {t('stats.empty')}
       </ChartEmpty>
     )
   }
@@ -76,7 +77,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
   const weekData = weekly.map((w) => ({
     ...w,
     label: shortDate(w.weekStart),
-    tooltipTitle: `Semana del ${shortDate(w.weekStart)} al ${shortDate(addDays(w.weekStart, 6))}`,
+    tooltipTitle: t('stats.weekOf', { from: shortDate(w.weekStart), to: shortDate(addDays(w.weekStart, 6)) }),
     current: w.weekStart === thisMonday,
   }))
 
@@ -87,7 +88,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
     <div className="space-y-6">
       {/* Filtro: una sola fila encima de todo; afecta a todo lo de abajo */}
       <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Periodo" className="inline-flex flex-wrap border border-mist rounded-sm bg-white overflow-hidden">
+        <div role="group" aria-label={t('stats.period')} className="inline-flex flex-wrap border border-mist rounded-sm bg-surface overflow-hidden">
           {RANGE_OPTIONS.map((o) => (
             <button
               key={o.key}
@@ -95,10 +96,10 @@ export default function StatsDashboard({ sessions, disciplines }) {
               onClick={() => setRangeKey(o.key)}
               aria-pressed={rangeKey === o.key}
               className={`px-3 py-2 text-sm transition-colors ${
-                rangeKey === o.key ? 'bg-navy text-white font-semibold' : 'text-slate hover:bg-bg'
+                rangeKey === o.key ? 'bg-primary text-white font-semibold' : 'text-slate hover:bg-bg'
               }`}
             >
-              {o.label}
+              {t('stats.range.' + o.key)}
             </button>
           ))}
         </div>
@@ -112,42 +113,42 @@ export default function StatsDashboard({ sessions, disciplines }) {
       {/* Las tres métricas de un vistazo */}
       <div className="grid sm:grid-cols-3 gap-4">
         <KpiTile
-          label="Kilómetros acumulados"
+          label={t('stats.kpi.km')}
           value={fmtKm(kmDone)}
-          unit="km completados"
-          detail={`de ${fmtKm(kmPlanned)} km programados${kmPlanned > 0 ? ` (${Math.round((kmDone / kmPlanned) * 100)} %)` : ''}`}
+          unit={t('stats.kpi.kmUnit')}
+          detail={t('stats.kpi.kmDetail', { planned: fmtKm(kmPlanned), pct: kmPlanned > 0 ? ` (${Math.round((kmDone / kmPlanned) * 100)} %)` : '' })}
         />
         <KpiTile
-          label="Tiempo semanal"
+          label={t('stats.kpi.time')}
           value={elapsed.length ? formatDuration(avgDoneMin) : '—'}
-          unit={elapsed.length ? 'de media por semana' : ''}
+          unit={elapsed.length ? t('stats.kpi.timeUnit') : ''}
           detail={
             currentWeek
-              ? `Esta semana: ${formatDuration(currentWeek.doneMin)} de ${formatDuration(currentWeek.plannedMin)} previstos`
-              : 'Esta semana no tiene sesiones en este periodo'
+              ? t('stats.kpi.timeWeek', { done: formatDuration(currentWeek.doneMin), planned: formatDuration(currentWeek.plannedMin) })
+              : t('stats.kpi.timeNone')
           }
         />
         <KpiTile
-          label="Desnivel positivo acumulado"
+          label={t('stats.kpi.elev')}
           value={fmtM(elevDone)}
-          unit="m completados"
-          detail={`de ${fmtM(elevPlanned)} m programados${elevPlanned > 0 ? ` (${Math.round((elevDone / elevPlanned) * 100)} %)` : ''}`}
+          unit={t('stats.kpi.elevUnit')}
+          detail={t('stats.kpi.elevDetail', { planned: fmtM(elevPlanned), pct: elevPlanned > 0 ? ` (${Math.round((elevDone / elevPlanned) * 100)} %)` : '' })}
         />
       </div>
 
       {/* 1 · Kilómetros por disciplina */}
       <ChartCard
-        title="Kilómetros acumulados por disciplina"
-        subtitle="Completados frente a programados · según los km de cada sesión"
+        title={t('stats.km.title')}
+        subtitle={t('stats.km.subtitle')}
         table={
           kmRows.length > 0 && (
             <DataTable
               columns={[
-                { key: 'name', label: 'Disciplina' },
-                { key: 'sessions', label: 'Sesiones', align: 'right' },
-                { key: 'planned', label: 'Programados (km)', align: 'right' },
-                { key: 'done', label: 'Completados (km)', align: 'right' },
-                { key: 'pct', label: 'Cumplimiento', align: 'right' },
+                { key: 'name', label: t('stats.col.discipline') },
+                { key: 'sessions', label: t('stats.col.sessions'), align: 'right' },
+                { key: 'planned', label: t('stats.col.plannedKm'), align: 'right' },
+                { key: 'done', label: t('stats.col.doneKm'), align: 'right' },
+                { key: 'pct', label: t('stats.col.compliance'), align: 'right' },
               ]}
               rows={km.map((r) => ({
                 key: r.key,
@@ -158,7 +159,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
                 pct: r.planned > 0 ? `${Math.round((r.done / r.planned) * 100)} %` : '—',
               }))}
               footer={{
-                name: 'Total',
+                name: t('stats.total'),
                 sessions: `${km.reduce((t, r) => t + r.doneCount, 0)}/${km.reduce((t, r) => t + r.count, 0)}`,
                 planned: fmtKm(kmPlanned),
                 done: fmtKm(kmDone),
@@ -169,17 +170,17 @@ export default function StatsDashboard({ sessions, disciplines }) {
         }
       >
         {kmRows.length === 0 ? (
-          <ChartEmpty>No hay kilómetros programados en este periodo.</ChartEmpty>
+          <ChartEmpty>{t('stats.km.empty')}</ChartEmpty>
         ) : (
           <>
             <HBars
               rows={kmRows}
               format={fmtKm}
               unitLabel=" km"
-              ariaLabel="Kilómetros completados y programados por disciplina"
+              ariaLabel={t('stats.km.aria')}
             />
             <p className="text-xs text-slate">
-              Los kilómetros son los que figuran en cada sesión (km estimados o, en bici y natación, su distancia). Cuentan como completados las sesiones que has marcado como «Completado».
+              {t('stats.km.note')}
             </p>
           </>
         )}
@@ -187,16 +188,16 @@ export default function StatsDashboard({ sessions, disciplines }) {
 
       {/* 2 · Tiempo semanal */}
       <ChartCard
-        title="Tiempo total de entrenamiento semanal"
-        subtitle="Horas por semana natural (lunes a domingo)"
+        title={t('stats.time.title')}
+        subtitle={t('stats.time.subtitle')}
         table={
           weekData.length > 0 && (
             <DataTable
               columns={[
-                { key: 'week', label: 'Semana' },
-                { key: 'planned', label: 'Previsto', align: 'right' },
-                { key: 'done', label: 'Hecho', align: 'right' },
-                { key: 'sessions', label: 'Sesiones', align: 'right' },
+                { key: 'week', label: t('stats.col.week') },
+                { key: 'planned', label: t('stats.col.planned'), align: 'right' },
+                { key: 'done', label: t('stats.col.done'), align: 'right' },
+                { key: 'sessions', label: t('stats.col.sessions'), align: 'right' },
               ]}
               rows={weekData.map((w) => ({
                 key: w.weekStart,
@@ -206,7 +207,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
                 sessions: `${w.doneSessions}/${w.sessions}`,
               }))}
               footer={{
-                week: 'Total',
+                week: t('stats.total'),
                 planned: formatDuration(sum(weekData, 'plannedMin')),
                 done: formatDuration(sum(weekData, 'doneMin')),
                 sessions: `${sum(weekData, 'doneSessions')}/${sum(weekData, 'sessions')}`,
@@ -217,40 +218,40 @@ export default function StatsDashboard({ sessions, disciplines }) {
       >
         {sum(weekData, 'plannedMin') + sum(weekData, 'doneMin') === 0 ? (
           <ChartEmpty>
-            Las sesiones de este periodo aún no tienen duración. Aparecerá cuando tu entrenador indique la duración prevista o tú registres la real.
+            {t('stats.time.empty')}
           </ChartEmpty>
         ) : (
           <>
             <ColumnChart
               data={weekData}
               series={[
-                { key: 'plannedMin', label: 'Previsto', color: PLANNED },
-                { key: 'doneMin', label: 'Hecho', color: DONE },
+                { key: 'plannedMin', label: t('stats.col.planned'), color: PLANNED },
+                { key: 'doneMin', label: t('stats.col.done'), color: DONE },
               ]}
               format={formatDuration}
               axisFormat={(v) => `${fmtHours(v)} h`}
               axisUnit={60}
-              ariaLabel="Tiempo de entrenamiento previsto y realizado por semana"
+              ariaLabel={t('stats.time.aria')}
             />
             {minRows.length > 0 && (
               <div>
-                <h4 className="font-mono text-xs text-slate mb-3">Reparto por disciplina (hecho / previsto)</h4>
+                <h4 className="font-mono text-xs text-slate mb-3">{t('stats.time.byDisc')}</h4>
                 <HBars
                   rows={minRows}
                   format={(v) => fmtHours(v)}
                   unitLabel=" h"
-                  ariaLabel="Horas completadas y previstas por disciplina"
+                  ariaLabel={t('stats.time.byDiscAria')}
                 />
               </div>
             )}
             {estimatedWeeks > 0 && (
               <p className="text-xs text-slate">
-                En algunas sesiones completadas no hay duración real registrada: se cuenta la duración prevista.
+                {t('stats.time.estimated')}
               </p>
             )}
             {undatedCount > 0 && (
               <p className="text-xs text-slate">
-                {undatedCount} {undatedCount === 1 ? 'sesión sin día asignado no aparece' : 'sesiones sin día asignado no aparecen'} en las gráficas semanales.
+                {t('stats.undated', { count: undatedCount })}
               </p>
             )}
           </>
@@ -259,16 +260,16 @@ export default function StatsDashboard({ sessions, disciplines }) {
 
       {/* 3 · Desnivel positivo */}
       <ChartCard
-        title="Desnivel positivo acumulado"
-        subtitle="Metros de subida acumulados semana a semana"
+        title={t('stats.elev.title')}
+        subtitle={t('stats.elev.subtitle')}
         table={
           elevPlanned > 0 && (
             <DataTable
               columns={[
-                { key: 'week', label: 'Semana' },
-                { key: 'planned', label: 'Programado (m)', align: 'right' },
-                { key: 'done', label: 'Completado (m)', align: 'right' },
-                { key: 'accDone', label: 'Acumulado (m)', align: 'right' },
+                { key: 'week', label: t('stats.col.week') },
+                { key: 'planned', label: t('stats.col.plannedM'), align: 'right' },
+                { key: 'done', label: t('stats.col.doneM'), align: 'right' },
+                { key: 'accDone', label: t('stats.col.accM'), align: 'right' },
               ]}
               rows={weekData.map((w, i) => ({
                 key: w.weekStart,
@@ -277,14 +278,14 @@ export default function StatsDashboard({ sessions, disciplines }) {
                 done: fmtM(w.doneElev),
                 accDone: fmtM(cumDone[i]),
               }))}
-              footer={{ week: 'Total', planned: fmtM(elevPlanned), done: fmtM(elevDone), accDone: fmtM(elevDone) }}
+              footer={{ week: t('stats.total'), planned: fmtM(elevPlanned), done: fmtM(elevDone), accDone: fmtM(elevDone) }}
             />
           )
         }
       >
         {elevPlanned === 0 ? (
           <ChartEmpty>
-            Ninguna sesión de este periodo tiene desnivel. Se calcula con el campo «Desnivel (m)» de las sesiones de carrera.
+            {t('stats.elev.empty')}
           </ChartEmpty>
         ) : (
           <>
@@ -292,25 +293,25 @@ export default function StatsDashboard({ sessions, disciplines }) {
               labels={weekData.map((w) => w.label)}
               tooltipTitles={weekData.map((w) => w.tooltipTitle)}
               series={[
-                { key: 'planned', label: 'Programado', color: PLANNED, values: cumPlanned },
-                { key: 'done', label: 'Completado', color: DONE, values: cumDone, area: true },
+                { key: 'planned', label: t('stats.elev.series.planned'), color: PLANNED, values: cumPlanned },
+                { key: 'done', label: t('stats.elev.series.done'), color: DONE, values: cumDone, area: true },
               ]}
               format={(v) => `${fmtM(v)} m`}
-              ariaLabel="Desnivel positivo acumulado, programado y completado, por semana"
+              ariaLabel={t('stats.elev.aria')}
             />
             {topElev.length > 0 && (
               <div>
-                <h4 className="font-mono text-xs text-slate mb-2">Sesiones con más desnivel</h4>
+                <h4 className="font-mono text-xs text-slate mb-2">{t('stats.elev.top')}</h4>
                 <ul className="divide-y divide-mist border border-mist rounded-sm">
                   {topElev.map(({ s, elev }) => (
                     <li key={s.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
                       <span className="min-w-0">
-                        <span className="font-semibold">{s.session_type || 'Sesión'}</span>
-                        <span className="text-slate"> · {s.session_date ? longDayTitle(s.session_date) : 'sin día asignado'}</span>
+                        <span className="font-semibold">{s.session_type || t('common.session')}</span>
+                        <span className="text-slate"> · {s.session_date ? longDayTitle(s.session_date) : t('stats.elev.noDay')}</span>
                       </span>
                       <span className="font-mono text-xs whitespace-nowrap">
                         {fmtM(elev)} m
-                        <span className="text-slate"> · {s.status === 'completado' ? 'completada' : 'pendiente'}</span>
+                        <span className="text-slate"> · {s.status === 'completado' ? t('stats.elev.done') : t('stats.elev.pending')}</span>
                       </span>
                     </li>
                   ))}

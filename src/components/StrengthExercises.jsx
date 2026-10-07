@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { ui } from '../ui/ui'
 
 // Fuerza se modela como tabla relacional (session_exercises) y no como
 // metrics jsonb, porque es estructuralmente repetitiva (series x reps x
@@ -40,19 +41,19 @@ export default function StrengthExercises({ sessionId }) {
       rpe_set: '',
     })
     setSaving(false)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else load()
   }
 
   async function handleUpdate(id, patch) {
     const { error } = await supabase.from('session_exercises').update(patch).eq('id', id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else load()
   }
 
   async function handleDelete(id) {
     const { error } = await supabase.from('session_exercises').delete().eq('id', id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else load()
   }
 
@@ -99,7 +100,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         onChange={(e) => setName(e.target.value)}
         onBlur={handleBlur}
         placeholder="Ejercicio (ej. Sentadilla trasera)"
-        className="col-span-5 border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+        className="col-span-5 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input
         type="number"
@@ -107,7 +108,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         onChange={(e) => setSets(e.target.value)}
         onBlur={handleBlur}
         placeholder="Series"
-        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input
         type="number"
@@ -115,7 +116,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         onChange={(e) => setReps(e.target.value)}
         onBlur={handleBlur}
         placeholder="Reps"
-        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input
         type="number"
@@ -123,7 +124,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         onChange={(e) => setLoadKg(e.target.value)}
         onBlur={handleBlur}
         placeholder="Kg"
-        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-white"
+        className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <button type="button" onClick={onDelete} className="col-span-1 text-xs text-red hover:text-red-deep">
         ✕

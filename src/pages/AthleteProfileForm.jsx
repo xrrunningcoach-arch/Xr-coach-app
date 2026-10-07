@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
+import { useT } from '../i18n'
+import { ui } from '../ui/ui'
 
 const EMPTY = {
   full_name: '',
@@ -23,6 +25,7 @@ const EMPTY = {
 // onSaved opcional: se llama cuando se guarda correctamente.
 export default function AthleteProfileForm({ profileId, basicProfile, onSaved }) {
   const { user, profile: myProfile } = useAuth()
+  const t = useT()
   const targetId = profileId || user?.id
 
   const [basic, setBasic] = useState(basicProfile || null)
@@ -100,7 +103,7 @@ export default function AthleteProfileForm({ profileId, basicProfile, onSaved })
     const { error } = await supabase.from('athlete_profiles').upsert(payload, { onConflict: 'profile_id' })
     if (error) {
       setSaving(false)
-      alert('Error al guardar: ' + error.message)
+      ui.error(t('prof.saveError', { msg: error.message }))
       return
     }
 
@@ -110,7 +113,7 @@ export default function AthleteProfileForm({ profileId, basicProfile, onSaved })
     const { error: basicErr } = await supabase.from('profiles').update(basicUpdate).eq('id', targetId)
     setSaving(false)
     if (basicErr) {
-      alert('Error al guardar el nombre o la edad: ' + basicErr.message)
+      ui.error(t('prof.saveError', { msg: basicErr.message }))
       return
     }
 
@@ -118,59 +121,59 @@ export default function AthleteProfileForm({ profileId, basicProfile, onSaved })
     if (onSaved) onSaved()
   }
 
-  if (loading) return <p className="text-sm text-slate">Cargando perfil…</p>
+  if (loading) return <p className="text-sm text-slate">{t('prof.loading')}</p>
 
   const isCoachEditingOther = myProfile?.role === 'coach' && targetId !== user?.id
 
   return (
-    <form onSubmit={handleSave} className="bg-white border border-mist rounded-sm p-6 space-y-5">
+    <form onSubmit={handleSave} className="bg-surface border border-mist rounded-xl p-6 space-y-5">
       <div>
         <h2 className="font-display text-xl text-navy">
-          {isCoachEditingOther ? `Perfil de ${basic?.full_name || basic?.email}` : 'Tu perfil'}
+          {isCoachEditingOther ? t('prof.of', { name: basic?.full_name || basic?.email }) : t('prof.yours')}
         </h2>
         <p className="text-sm text-slate mt-1">
-          Estos datos son la base sobre la que se diseña el plan de entrenamiento.
+          {t('prof.intro')}
         </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Nombre del atleta" value={form.full_name} onChange={(v) => set('full_name', v)} />
-        <Field label="Edad" type="number" value={form.age} onChange={(v) => set('age', v)} />
+        <Field label={t('prof.name')} value={form.full_name} onChange={(v) => set('full_name', v)} />
+        <Field label={t('prof.age')} type="number" value={form.age} onChange={(v) => set('age', v)} />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Objetivo principal" value={form.main_goal} onChange={(v) => set('main_goal', v)} placeholder="Ej. Retomar la carrera y crear rutina" />
-        <Field label="Objetivo a largo plazo" value={form.long_term_goal} onChange={(v) => set('long_term_goal', v)} placeholder="Ej. 21K y luego mejorar marcas" />
+        <Field label={t('prof.main')} value={form.main_goal} onChange={(v) => set('main_goal', v)} placeholder={t('prof.mainPh')} />
+        <Field label={t('prof.long')} value={form.long_term_goal} onChange={(v) => set('long_term_goal', v)} placeholder={t('prof.longPh')} />
       </div>
 
-      <Field label="Experiencia en carrera" value={form.sport_history} onChange={(v) => set('sport_history', v)} textarea />
-      <Field label="Marcas personales" value={form.personal_bests} onChange={(v) => set('personal_bests', v)} placeholder="Ej. 21K: 1h23' · Maratón: 2h57'" />
+      <Field label={t('prof.history')} value={form.sport_history} onChange={(v) => set('sport_history', v)} textarea />
+      <Field label={t('prof.pbs')} value={form.personal_bests} onChange={(v) => set('personal_bests', v)} placeholder={t('prof.pbsPh')} />
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Frecuencia de carrera" value={form.weekly_run_frequency} onChange={(v) => set('weekly_run_frequency', v)} placeholder="Ej. Disponible: 3 días/semana" />
-        <Field label="Frecuencia de fuerza / gym" value={form.weekly_strength_frequency} onChange={(v) => set('weekly_strength_frequency', v)} placeholder="Ej. 1 gym (lunes o miércoles)" />
+        <Field label={t('prof.runFreq')} value={form.weekly_run_frequency} onChange={(v) => set('weekly_run_frequency', v)} placeholder={t('prof.runFreqPh')} />
+        <Field label={t('prof.gymFreq')} value={form.weekly_strength_frequency} onChange={(v) => set('weekly_strength_frequency', v)} placeholder={t('prof.gymFreqPh')} />
       </div>
 
-      <Field label="Historial de lesiones" value={form.injury_history} onChange={(v) => set('injury_history', v)} textarea />
-      <Field label="Material y recursos" value={form.resources} onChange={(v) => set('resources', v)} textarea />
-      <Field label="Control de carga" value={form.load_control} onChange={(v) => set('load_control', v)} textarea />
+      <Field label={t('prof.injuries')} value={form.injury_history} onChange={(v) => set('injury_history', v)} textarea />
+      <Field label={t('prof.resources')} value={form.resources} onChange={(v) => set('resources', v)} textarea />
+      <Field label={t('prof.loadControl')} value={form.load_control} onChange={(v) => set('load_control', v)} textarea />
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="FC de reposo (ppm)" type="number" value={form.resting_hr} onChange={(v) => set('resting_hr', v)} />
-        <Field label="FC máxima real (test de campo)" type="number" value={form.max_hr_real} onChange={(v) => set('max_hr_real', v)} />
+        <Field label={t('prof.restHr')} type="number" value={form.resting_hr} onChange={(v) => set('resting_hr', v)} />
+        <Field label={t('prof.maxHr')} type="number" value={form.max_hr_real} onChange={(v) => set('max_hr_real', v)} />
       </div>
 
-      <Field label="Notas adicionales" value={form.notes} onChange={(v) => set('notes', v)} textarea />
+      <Field label={t('prof.notes')} value={form.notes} onChange={(v) => set('notes', v)} textarea />
 
       <div className="flex items-center gap-4">
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+          className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
-          {saving ? 'Guardando…' : 'Guardar perfil'}
+          {saving ? t('common.saving') : t('prof.save')}
         </button>
-        {savedAt && <span className="text-sm text-navy-light font-mono">Guardado ✓</span>}
+        {savedAt && <span className="text-sm text-navy-light font-mono">{t('anam.saved')}</span>}
       </div>
     </form>
   )

@@ -22,6 +22,7 @@ import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../li
 import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
 import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
+import { ui } from '../ui/ui'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
@@ -122,7 +123,7 @@ export default function CoachAthlete() {
         setLibraryDraft({ kind, defaultName: entity.name, payload: serializeMacrocycle(entity, mesos, sessions, disciplines, ex) })
       }
     } catch (e) {
-      alert(e.message)
+      ui.error(e.message)
     }
   }
 
@@ -351,7 +352,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
   }
 
   return (
-    <form onSubmit={handleCreate} className="bg-white border border-mist rounded-sm p-6 space-y-5 max-w-2xl">
+    <form onSubmit={handleCreate} className="bg-surface border border-mist rounded-sm p-6 space-y-5 max-w-2xl">
       <h2 className="font-display text-xl text-navy">Crear plan de entrenamiento</h2>
 
       <div>
@@ -447,7 +448,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
       <button
         type="submit"
         disabled={saving}
-        className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+        className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
       >
         {saving ? 'Generando plan…' : 'Generar esqueleto de plan'}
       </button>
@@ -508,13 +509,13 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
       rpe_theoretical: '',
       status: 'pendiente',
     })
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onReload()
   }
 
   async function handleStatusChange(status) {
     const { error } = await supabase.from('training_plans').update({ status }).eq('id', plan.id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onReload()
   }
 
@@ -525,7 +526,7 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
           <p className="font-mono text-xs text-red mb-1">
             {plan.races?.name || plan.custom_race_name} · {plan.duration_weeks} semanas
           </p>
-          <p className="text-sm text-bg/80">
+          <p className="text-sm text-white/80">
             {plan.start_date || '—'} → {plan.race_date || '—'} · Objetivo: {plan.target_pace || '—'}
           </p>
         </div>
@@ -544,7 +545,7 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
         const meso = mesocycles.find((m) => week >= m.week_start && week <= m.week_end)
         const weekLoad = loadByWeek.find((w) => w.week === week)
         return (
-          <div key={week} className="bg-white border border-mist rounded-sm overflow-hidden">
+          <div key={week} className="bg-surface border border-mist rounded-sm overflow-hidden">
             <div className="bg-bg-dim px-5 py-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-display text-lg text-navy">Semana {week}</h3>
               <span className="font-mono text-[11px] text-slate">{meso?.name}</span>
@@ -592,8 +593,8 @@ function WeekLoadBars({ weekLoad, maxLoad, maxImpact }) {
   }
   return (
     <div className="px-5 py-3 border-b border-mist space-y-1.5">
-      <LoadBar label="Carga total" value={weekLoad.load} max={maxLoad} colorClass="bg-navy" />
-      <LoadBar label="Carga de impacto" value={weekLoad.impactLoad} max={maxImpact} colorClass="bg-red" />
+      <LoadBar label="Carga total" value={weekLoad.load} max={maxLoad} colorClass="bg-primary" />
+      <LoadBar label="Carga de impacto" value={weekLoad.impactLoad} max={maxImpact} colorClass="bg-brand" />
     </div>
   )
 }
@@ -634,13 +635,13 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athle
       resting_hr: restingHr === '' ? null : Number(restingHr),
     })
     setSaving(false)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onSaved()
   }
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSave} className="bg-white border border-mist rounded-sm p-6 space-y-4 max-w-2xl">
+      <form onSubmit={handleSave} className="bg-surface border border-mist rounded-sm p-6 space-y-4 max-w-2xl">
         <h2 className="font-display text-xl text-navy">Datos base (rellenar con test de campo real)</h2>
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
@@ -667,7 +668,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athle
           </p>
           <p className="text-xs">Si no tienes FC máxima real, se usa la estimada (220 - edad) en los cálculos.</p>
         </div>
-        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
           {saving ? 'Guardando…' : 'Guardar zonas'}
         </button>
       </form>
@@ -699,20 +700,20 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
     setSaving(true)
     const { error } = await supabase.from('milestones').insert({ ...form, plan_id: planId })
     setSaving(false)
-    if (error) { alert(error.message); return }
+    if (error) { ui.error(error.message); return }
     setForm({ event_date: '', title: '', type: '', week_ref: '', notes: '' })
     onChanged()
   }
 
   async function handleDelete(id) {
     const { error } = await supabase.from('milestones').delete().eq('id', id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onChanged()
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-mist rounded-sm divide-y divide-mist">
+      <div className="bg-surface border border-mist rounded-sm divide-y divide-mist">
         {milestones.length === 0 && <p className="px-5 py-6 text-sm text-slate">Sin hitos todavía.</p>}
         {milestones.map((m) => (
           <div key={m.id} className="px-5 py-4 flex items-start justify-between gap-4">
@@ -726,7 +727,7 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
         ))}
       </div>
 
-      <form onSubmit={handleAdd} className="bg-white border border-mist rounded-sm p-6 space-y-4">
+      <form onSubmit={handleAdd} className="bg-surface border border-mist rounded-sm p-6 space-y-4">
         <h3 className="font-display text-lg text-navy">Añadir hito</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
@@ -735,7 +736,7 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
           <input placeholder="Semana del plan" value={form.week_ref} onChange={(e) => setForm({ ...form, week_ref: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
         </div>
         <textarea placeholder="Notas" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
-        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
           {saving ? 'Guardando…' : 'Añadir'}
         </button>
       </form>
@@ -757,20 +758,20 @@ function TestsEditor({ planId, tests, onChanged }) {
     setSaving(true)
     const { error } = await supabase.from('tests').insert({ ...form, plan_id: planId })
     setSaving(false)
-    if (error) { alert(error.message); return }
+    if (error) { ui.error(error.message); return }
     setForm({ test_date: '', block_label: '', test_type: '', distance: '', result: '', pace: '', rpe_reached: '', observations: '' })
     onChanged()
   }
 
   async function handleDelete(id) {
     const { error } = await supabase.from('tests').delete().eq('id', id)
-    if (error) alert(error.message)
+    if (error) ui.error(error.message)
     else onChanged()
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-mist rounded-sm overflow-x-auto">
+      <div className="bg-surface border border-mist rounded-sm overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-bg-dim">
             <tr>
@@ -799,7 +800,7 @@ function TestsEditor({ planId, tests, onChanged }) {
         </table>
       </div>
 
-      <form onSubmit={handleAdd} className="bg-white border border-mist rounded-sm p-6 space-y-4">
+      <form onSubmit={handleAdd} className="bg-surface border border-mist rounded-sm p-6 space-y-4">
         <h3 className="font-display text-lg text-navy">Añadir test / marca</h3>
         <div className="grid sm:grid-cols-3 gap-4">
           <input type="date" value={form.test_date} onChange={(e) => setForm({ ...form, test_date: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
@@ -811,7 +812,7 @@ function TestsEditor({ planId, tests, onChanged }) {
           <input placeholder="RPE alcanzado" value={form.rpe_reached} onChange={(e) => setForm({ ...form, rpe_reached: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
         </div>
         <textarea placeholder="Observaciones" value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
-        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60">
+        <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
           {saving ? 'Guardando…' : 'Añadir'}
         </button>
       </form>

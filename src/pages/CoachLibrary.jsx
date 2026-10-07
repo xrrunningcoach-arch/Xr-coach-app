@@ -7,6 +7,7 @@ import ApplyTemplateModal from '../components/library/ApplyTemplateModal'
 import { fetchDisciplines } from '../lib/disciplines'
 import { KINDS, kindLabel, templateSummary } from '../lib/templates'
 import { saveLibraryItem } from '../lib/templatesApi'
+import { ui } from '../ui/ui'
 
 const FILTERS = [
   { id: 'all', label: 'Todo' },
@@ -65,14 +66,14 @@ export default function CoachLibrary() {
       })
       load()
     } catch (e) {
-      alert(e.message)
+      ui.error(e.message)
     }
   }
 
   async function handleDelete(item) {
-    if (!confirm(`¿Eliminar «${item.name}» de la biblioteca? Los entrenamientos que ya aplicaste a atletas no se tocan.`)) return
+    if (!(await ui.confirm(`¿Eliminar «${item.name}» de la biblioteca? Los entrenamientos que ya aplicaste a atletas no se tocan.`, { danger: true, confirmLabel: 'Eliminar' }))) return
     const { error: err } = await supabase.from('library_items').delete().eq('id', item.id)
-    if (err) alert(err.message)
+    if (err) ui.error(err.message)
     else load()
   }
 
@@ -110,7 +111,7 @@ export default function CoachLibrary() {
               key={k.id}
               type="button"
               onClick={() => setEditing({ kind: k.id })}
-              className={`px-3 py-2 text-xs font-semibold rounded-sm text-white ${k.id === 'session' ? 'bg-red hover:bg-red-deep' : 'bg-navy hover:bg-navy-deep'}`}
+              className={`px-3 py-2 text-xs font-semibold rounded-sm text-white ${k.id === 'session' ? 'bg-brand hover:bg-brand-deep' : 'bg-primary hover:bg-primary-hover'}`}
             >
               + {k.label}
             </button>
@@ -121,14 +122,14 @@ export default function CoachLibrary() {
       {error && <p className="text-red text-sm">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Filtrar por tipo" className="inline-flex flex-wrap border border-mist rounded-sm bg-white overflow-hidden">
+        <div role="group" aria-label="Filtrar por tipo" className="inline-flex flex-wrap border border-mist rounded-sm bg-surface overflow-hidden">
           {FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
               aria-pressed={filter === f.id}
-              className={`px-3 py-2 text-sm ${filter === f.id ? 'bg-navy text-white font-semibold' : 'text-slate hover:bg-bg'}`}
+              className={`px-3 py-2 text-sm ${filter === f.id ? 'bg-primary text-white font-semibold' : 'text-slate hover:bg-bg'}`}
             >
               {f.label}
             </button>
@@ -140,12 +141,12 @@ export default function CoachLibrary() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar por nombre o etiqueta…"
           aria-label="Buscar en la biblioteca"
-          className="flex-1 min-w-[200px] max-w-sm border border-mist rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-navy"
+          className="flex-1 min-w-[200px] max-w-sm border border-mist rounded-sm px-3 py-2 text-sm bg-surface focus:outline-none focus:border-navy"
         />
       </div>
 
       {visible.length === 0 ? (
-        <div className="bg-white border border-mist rounded-sm p-8 text-center text-slate text-sm">
+        <div className="bg-surface border border-mist rounded-sm p-8 text-center text-slate text-sm">
           {items.length === 0
             ? 'Tu biblioteca está vacía. Crea tu primera plantilla o guarda una sesión, mesociclo o macrociclo de un atleta con «A la biblioteca».'
             : 'Ninguna plantilla coincide con el filtro.'}
@@ -155,7 +156,7 @@ export default function CoachLibrary() {
           {visible.map((item) => {
             const s = templateSummary(item.kind, item.payload)
             return (
-              <li key={item.id} className="bg-white border border-mist rounded-sm flex flex-col">
+              <li key={item.id} className="bg-surface border border-mist rounded-sm flex flex-col">
                 <div className="p-5 flex-1 space-y-2">
                   <p className="font-mono text-[11px] uppercase text-navy-light">{kindLabel(item.kind)}</p>
                   <h2 className="font-display text-lg text-navy leading-snug">{item.name}</h2>
@@ -176,7 +177,7 @@ export default function CoachLibrary() {
                   )}
                 </div>
                 <div className="px-5 py-3 border-t border-mist flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <button type="button" onClick={() => setApplying(item)} className="px-3 py-1.5 bg-red hover:bg-red-deep text-white text-xs font-semibold rounded-sm">
+                  <button type="button" onClick={() => setApplying(item)} className="px-3 py-1.5 bg-brand hover:bg-brand-deep text-white text-xs font-semibold rounded-sm">
                     Aplicar a un atleta
                   </button>
                   <button type="button" onClick={() => setEditing({ item })} className="text-xs font-semibold text-navy hover:text-red">

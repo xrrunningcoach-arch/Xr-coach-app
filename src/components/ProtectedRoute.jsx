@@ -21,7 +21,7 @@ export default function ProtectedRoute({ role, children }) {
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={refreshProfile}
-              className="px-4 py-2 text-sm font-semibold text-white bg-navy hover:bg-navy-deep rounded-sm"
+              className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-sm"
             >
               Reintentar
             </button>

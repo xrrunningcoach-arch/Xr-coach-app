@@ -14,7 +14,10 @@ export function toISO(date) {
 }
 
 export function isISO(value) {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(parseISO(value).getTime())
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const d = parseISO(value)
+  // Ida y vuelta: "2026-02-31" o "2026-13-01" se desbordan a otra fecha y no coinciden.
+  return !Number.isNaN(d.getTime()) && toISO(d) === value
 }
 
 export function addDays(iso, n) {
@@ -100,10 +103,41 @@ export function weekDays(mondayISO) {
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 const fmt = (opts, iso) => new Intl.DateTimeFormat('es-ES', { ...opts, timeZone: 'UTC' }).format(parseISO(iso))
 
-export const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-export const WEEKDAY_LONG = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+// Idioma de las fechas. El resto de la app llama a setDateLang(lang) al cambiar
+// de idioma; los arrays exportados se rellenan "en sitio" para que todos los
+// módulos que ya los importaron vean el cambio.
+const NAMES = {
+  es: {
+    weekdayShort: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    weekdayLong: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+  },
+  eu: {
+    weekdayShort: ['Al', 'Ar', 'Az', 'Og', 'Or', 'Lr', 'Ig'],
+    weekdayLong: ['Astelehena', 'Asteartea', 'Asteazkena', 'Osteguna', 'Ostirala', 'Larunbata', 'Igandea'],
+    monthLong: ['urtarrila', 'otsaila', 'martxoa', 'apirila', 'maiatza', 'ekaina', 'uztaila', 'abuztua', 'iraila', 'urria', 'azaroa', 'abendua'],
+    monthShort: ['urt', 'ots', 'mar', 'api', 'mai', 'eka', 'uzt', 'abu', 'ira', 'urr', 'aza', 'abe'],
+  },
+}
+
+let dateLang = 'es'
+export const WEEKDAY_SHORT = [...NAMES.es.weekdayShort]
+export const WEEKDAY_LONG = [...NAMES.es.weekdayLong]
+
+export function setDateLang(lang) {
+  dateLang = lang === 'eu' ? 'eu' : 'es'
+  WEEKDAY_SHORT.splice(0, 7, ...NAMES[dateLang].weekdayShort)
+  WEEKDAY_LONG.splice(0, 7, ...NAMES[dateLang].weekdayLong)
+}
+
+export function getDateLang() {
+  return dateLang
+}
+
+const monthOf = (iso) => parseISO(iso).getUTCMonth()
+const yearOf = (iso) => parseISO(iso).getUTCFullYear()
 
 export function monthTitle(iso) {
+  if (dateLang === 'eu') return `${yearOf(iso)}ko ${NAMES.eu.monthLong[monthOf(iso)]}`
   return cap(fmt({ month: 'long', year: 'numeric' }, iso).replace(' de ', ' '))
 }
 
@@ -111,19 +145,26 @@ export function dayNumber(iso) {
   return parseISO(iso).getUTCDate()
 }
 
+// "Martes, 6 de octubre" / "Asteartea, urriaren 6a"
 export function longDayTitle(iso) {
+  if (dateLang === 'eu') {
+    const wd = NAMES.eu.weekdayLong[weekdayIndex(iso)]
+    return `${wd}, ${NAMES.eu.monthLong[monthOf(iso)]}ren ${dayNumber(iso)}a`
+  }
   return cap(fmt({ weekday: 'long', day: 'numeric', month: 'long' }, iso))
 }
 
+// "6 oct" / "urr 6"
 export function shortDate(iso) {
+  if (dateLang === 'eu') return `${NAMES.eu.monthShort[monthOf(iso)]} ${dayNumber(iso)}`
   return fmt({ day: 'numeric', month: 'short' }, iso).replace('.', '')
 }
 
 export function weekRangeTitle(mondayISO) {
   const end = addDays(mondayISO, 6)
-  const sameMonth = parseISO(mondayISO).getUTCMonth() === parseISO(end).getUTCMonth()
+  const sameMonth = monthOf(mondayISO) === monthOf(end)
   const startPart = sameMonth ? String(dayNumber(mondayISO)) : shortDate(mondayISO)
-  return `${startPart} – ${shortDate(end)} ${parseISO(end).getUTCFullYear()}`
+  return `${startPart} – ${shortDate(end)} ${yearOf(end)}`
 }
 
 export function monthKey(iso) {

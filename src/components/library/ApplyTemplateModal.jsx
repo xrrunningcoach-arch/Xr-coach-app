@@ -8,7 +8,7 @@ import { longDayTitle, mondayOf, shortDate, todayISO } from '../../lib/dates'
 import { kindLabel, templateSummary } from '../../lib/templates'
 import { applyTemplateToAthlete, previewApplication } from '../../lib/templatesApi'
 
-const inputCls = 'w-full border border-mist rounded-sm px-3 py-2 text-sm bg-white focus:outline-none focus:border-navy'
+const inputCls = 'w-full border border-mist rounded-sm px-3 py-2 text-sm bg-surface focus:outline-none focus:border-navy'
 const labelCls = 'block font-mono text-xs text-slate mb-1'
 
 // Importar una plantilla de la biblioteca al calendario de un atleta.
@@ -110,7 +110,7 @@ export default function ApplyTemplateModal({ item: fixedItem = null, athlete: fi
             <Link
               to={`/coach/atleta/${athleteId}`}
               onClick={onClose}
-              className="px-4 py-2 bg-navy hover:bg-navy-deep text-white text-sm font-semibold rounded-sm"
+              className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm"
             >
               Ver el atleta
             </Link>
@@ -244,7 +244,7 @@ export default function ApplyTemplateModal({ item: fixedItem = null, athlete: fi
             type="button"
             onClick={handleApply}
             disabled={!canApply}
-            className="px-5 py-2.5 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+            className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
           >
             {busy ? 'Aplicando…' : 'Aplicar al calendario'}
           </button>

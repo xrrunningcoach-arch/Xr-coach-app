@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-const COLORS = { grid: '#d7e3dd', axis: '#4a554f', planned: '#c1392b', done: '#6ea393' }
+const COLORS = { grid: 'var(--chart-grid)', axis: 'var(--chart-text)', planned: 'var(--chart-accent)', done: 'var(--chart-done)' }
 
 // Redondea hacia arriba a un número "bonito" para el eje vertical.
 function niceMax(value) {
@@ -46,7 +46,7 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
   const showValues = data.length <= 16
 
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-hidden">
+    <div className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-lg text-navy">Semanas y volumen</h3>
         <span className="font-mono text-[11px] text-slate">

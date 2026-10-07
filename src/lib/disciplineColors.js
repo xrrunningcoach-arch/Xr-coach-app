@@ -1,9 +1,10 @@
 // Color fijo por disciplina (identidad), la misma en calendario y estadísticas.
 // Es la paleta categórica validada (orden fijo, no cíclico). Las disciplinas
 // que no estén en la lista usan los últimos huecos y, pasados estos, un gris.
-const SLOTS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
+// Los colores viven en variables CSS (--d1..--d8) para que cambien con el tema claro/oscuro.
+const SLOTS = ['var(--d1)', 'var(--d2)', 'var(--d3)', 'var(--d4)', 'var(--d5)', 'var(--d6)', 'var(--d7)', 'var(--d8)']
 const BY_CODE = { running: 0, swim: 1, strength: 2, bike: 3, hyrox: 4, mobility: 5 }
-export const NEUTRAL_COLOR = '#898781'
+export const NEUTRAL_COLOR = 'var(--d-neutral)'
 
 export function disciplineColor(discipline, allDisciplines = []) {
   if (!discipline) return NEUTRAL_COLOR

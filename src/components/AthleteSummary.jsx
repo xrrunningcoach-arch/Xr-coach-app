@@ -8,7 +8,7 @@ import MacroMesoPanel from './MacroMesoPanel'
 
 function Card({ title, action, children }) {
   return (
-    <div className="bg-white border border-mist rounded-sm overflow-hidden">
+    <div className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-lg text-navy">{title}</h3>
         {action}
@@ -190,7 +190,7 @@ export default function AthleteSummary({
             <p className="text-sm text-slate mb-3">
               Crea primero un plan para poder organizar macrociclos y mesociclos.
             </p>
-            <button type="button" onClick={onGoToPlan} className="px-4 py-2 bg-red hover:bg-red-deep text-white text-sm font-semibold rounded-sm">
+            <button type="button" onClick={onGoToPlan} className="px-4 py-2 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm">
               Ir a «Plan y sesiones»
             </button>
           </Card>

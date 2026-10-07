@@ -62,7 +62,7 @@ export default function LineChart({ labels, tooltipTitles, series, format = (v) 
               <path d={`${path(s.values)} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill={s.color} opacity="0.1" />
             )}
             <path d={path(s.values)} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-            <circle cx={x(n - 1)} cy={y(s.values[n - 1])} r="4" fill={s.color} stroke="#fff" strokeWidth="2" />
+            <circle cx={x(n - 1)} cy={y(s.values[n - 1])} r="4" fill={s.color} stroke="var(--c-surface)" strokeWidth="2" />
           </g>
         ))}
 
@@ -83,7 +83,7 @@ export default function LineChart({ labels, tooltipTitles, series, format = (v) 
           <g pointerEvents="none">
             <line x1={x(hover)} x2={x(hover)} y1={m.t} y2={y(0)} stroke={INK.axis} strokeWidth="1" />
             {series.map((s) => (
-              <circle key={s.key} cx={x(hover)} cy={y(s.values[hover])} r="4" fill={s.color} stroke="#fff" strokeWidth="2" />
+              <circle key={s.key} cx={x(hover)} cy={y(s.values[hover])} r="4" fill={s.color} stroke="var(--c-surface)" strokeWidth="2" />
             ))}
           </g>
         )}
