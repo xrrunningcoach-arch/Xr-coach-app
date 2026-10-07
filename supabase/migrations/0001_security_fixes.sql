@@ -25,9 +25,11 @@ alter table public.app_config enable row level security;
 -- ----------------------------------------------------------------------------
 drop policy if exists "profiles_update" on public.profiles;
 
+drop policy if exists "profiles_update_self" on public.profiles;
 create policy "profiles_update_self" on public.profiles
   for update using (id = auth.uid()) with check (id = auth.uid());
 
+drop policy if exists "profiles_update_coach" on public.profiles;
 create policy "profiles_update_coach" on public.profiles
   for update using (public.is_coach()) with check (public.is_coach());
 
@@ -92,7 +94,7 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
-grant execute on function public.submit_session to authenticated;
+grant execute on function public.submit_session(uuid, text, text, text, text) to authenticated;
 
 -- ----------------------------------------------------------------------------
 -- S-08: índices que faltaban sobre las columnas que las policies de RLS

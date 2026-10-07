@@ -1,37 +1,37 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>XR Running Coach — Panel de entrenamiento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>XR Running Coach</title>
+  <meta name="description" content="Tu plan de entrenamiento de running, siempre a mano." />
+  <meta name="theme-color" content="#08130f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="XR Coach" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            ink: '#0f1412', navy: '#173933', 'navy-deep': '#0d2420', 'navy-mid': '#25534b',
-            'navy-light': '#6ea393', bg: '#eef4f1', 'bg-dim': '#e2ece7',
-            red: '#c1392b', 'red-deep': '#a12e22', slate: '#4a554f', mist: '#d7e3dd',
-          },
-          fontFamily: {
-            display: ['Oswald', 'sans-serif'],
-            body: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-        }
-      }
-    }
+    // Aplica tema e idioma ANTES de pintar (evita el parpadeo claro/oscuro).
+    (function () {
+      try {
+        var t = localStorage.getItem('xr.theme');
+        if (t !== 'light' && t !== 'dark') t = 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        var l = localStorage.getItem('xr.lang');
+        if (l === 'eu' || l === 'es') document.documentElement.setAttribute('lang', l);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'light' ? '#eef4f1' : '#08130f');
+      } catch (e) {}
+    })();
   </script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .font-display { font-family: 'Oswald', sans-serif; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
-  </style>
 </head>
-<body class="bg-bg text-ink">
+<body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>

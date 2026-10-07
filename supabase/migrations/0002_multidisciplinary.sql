@@ -156,6 +156,10 @@ $$ language plpgsql security definer set search_path = public;
 -- submit_session amplía su firma con parámetros nuevos opcionales (con
 -- default null) para no romper las llamadas ya existentes en el frontend
 -- (AthleteDashboard.jsx sigue llamando solo con los 5 parámetros originales).
+-- Se elimina la versión antigua de 5 parámetros: si no, quedarían DOS funciones
+-- con el mismo nombre y el GRANT de abajo daría "function name is not unique".
+drop function if exists public.submit_session(uuid, text, text, text, text);
+
 create or replace function public.submit_session(
   p_session_id uuid,
   p_status text,
@@ -224,8 +228,8 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
-grant execute on function public.submit_session to authenticated;
-grant execute on function public.recompute_session_load to authenticated;
+grant execute on function public.submit_session(uuid, text, text, text, text, numeric, numeric, jsonb) to authenticated;
+grant execute on function public.recompute_session_load(uuid) to authenticated;
 
 -- El entrenador también puede registrar duración/RPE real directamente sobre
 -- la fila (p. ej. al revisar con el atleta in situ); un trigger recalcula la
