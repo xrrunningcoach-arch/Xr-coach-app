@@ -12,11 +12,12 @@ import ChatPanel from '../components/ChatPanel'
 import ZonesTable from '../components/ZonesTable'
 import CoachCalendar from '../components/CoachCalendar'
 import SaveToLibraryModal from '../components/library/SaveToLibraryModal'
-import { dateForWeekday } from '../lib/dates'
+import { dateForWeekday, todayISO } from '../lib/dates'
 import { cycleDatesFromWeeks } from '../lib/cycles'
 import { fetchExercisesBySession } from '../lib/templatesApi'
 import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../lib/templates'
-import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
+import { effectiveMaxHr, pickMaxHr, sanitizeManualZones, zonesFromThresholds } from '../lib/zones'
+import ThresholdTestForm from '../components/ThresholdTestForm'
 import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
 import { ui } from '../ui/ui'
@@ -34,6 +35,7 @@ export default function CoachAthlete() {
   const [sessions, setSessions] = useState([])
   const [hrZones, setHrZones] = useState(null)
   const [manualZones, setManualZones] = useState({})
+  const [thresholdTests, setThresholdTests] = useState([])
   const [milestones, setMilestones] = useState([])
   const [tests, setTests] = useState([])
   const [disciplines, setDisciplines] = useState([])
@@ -62,6 +64,8 @@ export default function CoachAthlete() {
     // aún no se ha ejecutado, la consulta falla y simplemente queda vacío.
     const { data: manual } = await supabase.from('athlete_hr_zones').select('manual_zones').eq('athlete_id', athleteId).maybeSingle()
     setManualZones(sanitizeManualZones(manual?.manual_zones))
+    const { data: thr } = await supabase.from('threshold_tests').select('*').eq('athlete_id', athleteId).order('test_date', { ascending: false })
+    setThresholdTests(thr || [])
 
     const { data: plans } = await supabase
       .from('training_plans')
@@ -203,6 +207,8 @@ export default function CoachAthlete() {
           coachId={user.id}
           hrZones={hrZones}
           manualZones={manualZones}
+          thresholdTests={thresholdTests}
+          today={todayISO()}
           athleteAge={athlete.age}
           onSaved={() => loadAll(true)}
         />
@@ -579,7 +585,7 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
 // ----------------------------------------------------------------------------
 // ZONAS DE FC
 // ----------------------------------------------------------------------------
-function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athleteAge, onSaved }) {
+function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thresholdTests = [], today, athleteAge, onSaved }) {
   const [age, setAge] = useState(hrZones?.age ?? athleteAge ?? '')
   const [maxHr, setMaxHr] = useState(hrZones?.max_hr_real ?? '')
   const [restingHr, setRestingHr] = useState(hrZones?.resting_hr ?? '')
@@ -588,7 +594,9 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athle
   const [previewManual, setPreviewManual] = useState(manualZones)
 
   // Los números de la tabla se recalculan al escribir, sin esperar a guardar.
-  const used = effectiveMaxHr({ maxHrReal: maxHr, age })
+  const latest = thresholdTests[0] || null
+  const testZones = latest ? zonesFromThresholds({ vt1Hr: latest.vt1_hr, vt2Hr: latest.vt2_hr, maxHr: latest.max_hr }) : {}
+  const used = effectiveMaxHr({ maxHrReal: pickMaxHr(latest?.max_hr, maxHr), age })
 
   async function handleSave(e) {
     e.preventDefault()
@@ -648,7 +656,9 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, athle
         onSaved={onSaved}
       />
 
-      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} />
+      <ThresholdTestForm athleteId={athleteId} coachId={coachId} today={today} history={thresholdTests} onSaved={onSaved} />
+
+      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} testZones={testZones} />
     </div>
   )
 }

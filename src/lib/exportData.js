@@ -14,7 +14,7 @@ export async function collectAthleteData(userId) {
 
   const [profile, athleteProfile, anamnesis, manualZones, messages, plans, thresholdTests, hrv] = await Promise.all([
     byAthlete('profiles', 'id'),
-    byAthlete('athlete_profiles'),
+    byAthlete('athlete_profiles', 'profile_id'),
     byAthlete('anamnesis'),
     byAthlete('athlete_hr_zones'),
     byAthlete('messages'),
