@@ -1,7 +1,7 @@
 // Service worker de XR Running Coach.
 // - Navegación: red primero (siempre la versión más nueva), con copia de reserva sin conexión.
 // - /assets/ e /icons/: caché primero (los archivos llevan hash en el nombre).
-// - NUNCA toca peticiones a otros orígenes (Supabase, fuentes): datos siempre en vivo.
+// - NUNCA toca peticiones a otros orígenes (Supabase): datos siempre en vivo.
 const VERSION = 'xr-v4-1'
 const SHELL = VERSION + '-shell'
 const STATIC = VERSION + '-static'
