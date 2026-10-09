@@ -50,7 +50,9 @@ export function AuthProvider({ children }) {
 
     // onAuthStateChange no debe bloquearse con await directo (recomendación de
     // Supabase); se delega en una promesa aparte para no colgar el listener.
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // Llegada desde el enlace de «he olvidado mi contraseña».
+      if (event === 'PASSWORD_RECOVERY') window.location.hash = '#/restablecer'
       applySession(nextSession)
     })
 

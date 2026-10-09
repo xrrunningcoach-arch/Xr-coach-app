@@ -10,4 +10,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  // PKCE: el enlace de recuperación llega como ?code=… (en query) y no como
+  // #access_token=… , que chocaría con las rutas con # de HashRouter.
+  auth: { flowType: 'pkce' },
+})

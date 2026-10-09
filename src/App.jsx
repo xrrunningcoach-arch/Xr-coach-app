@@ -8,6 +8,9 @@ import LoadingScreen from './components/LoadingScreen'
 
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import LegalPage from './pages/LegalPage'
 import AthleteHome from './pages/AthleteHome'
 import CoachHome from './pages/CoachHome'
 import CoachAthlete from './pages/CoachAthlete'
@@ -29,6 +32,10 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/recuperar" element={<ForgotPassword />} />
+          <Route path="/restablecer" element={<ResetPassword />} />
+          <Route path="/privacidad" element={<LegalPage kind="privacy" />} />
+          <Route path="/terminos" element={<LegalPage kind="terms" />} />
 
           <Route path="/" element={<RoleRedirect />} />
 
