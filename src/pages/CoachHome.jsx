@@ -86,20 +86,17 @@ export default function CoachHome() {
     setRecent(windowRows || [])
 
     // Sesiones completadas sin evaluación del entrenador todavía
+    // Anti-join en la propia consulta: solo las NO evaluadas, así el límite de 30
+    // no se llena con sesiones que ya tienen valoración.
     const { data: sessions } = await supabase
       .from('sessions')
-      .select('*, training_plans(athlete_id, profiles:athlete_id(full_name,email,is_active))')
+      .select('*, training_plans(athlete_id, profiles:athlete_id(full_name,email,is_active)), session_evaluations!left(id)')
       .eq('status', 'completado')
+      .is('session_evaluations', null)
       .order('completed_at', { ascending: false })
       .limit(30)
 
-    const { data: evaluations } = await supabase.from('session_evaluations').select('session_id')
-    const evaluatedIds = new Set((evaluations || []).map((e) => e.session_id))
-    setPending(
-      (sessions || []).filter(
-        (s) => !evaluatedIds.has(s.id) && s.training_plans?.profiles?.is_active !== false
-      )
-    )
+    setPending((sessions || []).filter((s) => s.training_plans?.profiles?.is_active !== false))
 
     // Mensajes del chat que los atletas te han enviado y aún no has leído.
     // Si todavía no se ha ejecutado la migración 0003, esta consulta falla y

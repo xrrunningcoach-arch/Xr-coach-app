@@ -138,5 +138,5 @@ y úsala con `const t = useT(); t('clave')`.
 
 ## Historial
 
-v2: archivar atletas, macrociclos, chat · v3: calendario, estadísticas, biblioteca, zonas manuales ([guía v3](docs/GUIA_v3.md)) ·
+v2: archivar atletas, macrociclos, chat · v3: calendario, estadísticas, biblioteca, zonas manuales (guía v3, retirada: ver [guía v4](docs/GUIA_v4.md)) ·
 v4: Hoy móvil, PWA, tema oscuro, euskera, cumplimiento, invitaciones, tests y CI.

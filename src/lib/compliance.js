@@ -1,7 +1,7 @@
 // Cumplimiento y alertas del entrenador. Funciones puras (sin red): reciben
 // los atletas, sus planes y sus sesiones recientes y devuelven, por atleta, qué
 // pasa y con qué urgencia. Así se pueden probar y ajustar los umbrales aquí.
-import { addDays, diffDays, mondayOf } from './dates'
+import { addDays, diffDays, localDateOf, mondayOf } from './dates'
 
 export const THRESHOLDS = {
   windowDays: 14, // ventana de cumplimiento
@@ -44,7 +44,7 @@ export function computeCompliance({ athletes, plans, sessions, today, t = THRESH
 
     const completedDates = mine
       .filter((s) => s.status === 'completado')
-      .map((s) => String(s.completed_at || s.session_date).slice(0, 10))
+      .map((s) => (s.completed_at ? localDateOf(s.completed_at) : s.session_date))
       .sort()
     const last = completedDates[completedDates.length - 1] || null
     const lastActivityDays = last ? Math.max(0, diffDays(today, last)) : null

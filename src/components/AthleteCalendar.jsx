@@ -9,6 +9,7 @@ import useToday from './calendar/useToday'
 import { findDiscipline } from '../lib/disciplines'
 import { disciplineColor } from '../lib/disciplineColors'
 import { weeklyLoad } from '../lib/load'
+import { sessionKm } from '../lib/stats'
 import { cycleForDate } from '../lib/cycles'
 import {
   WEEKDAY_SHORT,
@@ -19,6 +20,7 @@ import {
   monthTitle,
   parseISO,
   shortDate,
+  monthShort,
   toISO,
   weekDays,
   weekNumberFor,
@@ -195,7 +197,7 @@ export default function AthleteCalendar({
     const days = weekDays(weekMonday)
     const items = days.flatMap((d) => byDate.get(d) || [])
     const done = items.filter((s) => s.status === 'completado').length
-    const km = items.reduce((t, s) => t + (Number(s.km_estimated) || 0), 0)
+    const km = items.reduce((t, s) => t + sessionKm(s), 0)
     const weekLoad = loadByMonday.get(weekMonday)
     return (
       <div className="bg-surface border border-mist rounded-sm overflow-hidden">
@@ -228,7 +230,7 @@ export default function AthleteCalendar({
                   {dayNumber(iso)}
                 </p>
                 {(dayNumber(iso) === 1 || i === 0) && (
-                  <p className="font-mono text-[10px] text-navy-light uppercase mt-0.5">{shortDate(iso).split(' ').slice(1).join(' ')}</p>
+                  <p className="font-mono text-[10px] text-navy-light uppercase mt-0.5">{monthShort(iso)}</p>
                 )}
               </div>
               <div className="min-w-0">

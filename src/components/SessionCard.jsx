@@ -4,6 +4,7 @@ import StatusBadge from './StatusBadge'
 import DisciplineFields from './DisciplineFields'
 import { useT } from '../i18n'
 import { ui } from '../ui/ui'
+import { formatPace } from '../lib/stats'
 
 // Tarjeta de actividad del atleta. Movida SIN CAMBIOS desde AthleteDashboard.jsx
 // (mismo HTML y mismas clases CSS) para poder renderizarla dentro del
@@ -17,7 +18,9 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
   const [durationActual, setDurationActual] = useState(session.duration_actual_min ?? '')
   const [notes, setNotes] = useState(session.athlete_notes || '')
   const [link, setLink] = useState(session.link_url || '')
-  const [metrics, setMetrics] = useState({})
+  const [distance, setDistance] = useState(session.distance_actual_km ?? '')
+  const [avgHr, setAvgHr] = useState(session.avg_hr_actual ?? '')
+  const [metrics, setMetrics] = useState(session.metrics_actual || {})
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
@@ -31,6 +34,8 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
       p_duration_actual_min: durationActual === '' ? null : Number(durationActual),
       p_rpe_actual_value: rpeValue === '' ? null : Number(rpeValue),
       p_metrics: metrics,
+      p_distance_actual_km: distance === '' ? null : Number(distance),
+      p_avg_hr_actual: avgHr === '' ? null : Number(avgHr),
     })
     setSaving(false)
     if (error) {
@@ -62,6 +67,15 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
             {session.rpe_theoretical ? ` · ${t('card.theoretical', { v: session.rpe_theoretical })}` : ''}
           </p>
           {discipline && <DisciplineFields discipline={discipline} values={session.metrics} readOnly />}
+          {(session.distance_actual_km != null || session.avg_hr_actual != null) && (
+            <p className="font-mono text-xs text-navy-light mt-1">
+              {session.distance_actual_km != null ? t('card.distanceDone', { km: session.distance_actual_km }) : ''}
+              {session.distance_actual_km != null && session.duration_actual_min
+                ? ` · ${formatPace(session.duration_actual_min, session.distance_actual_km)}`
+                : ''}
+              {session.avg_hr_actual != null ? ` · ${t('card.avgHrDone', { bpm: session.avg_hr_actual })}` : ''}
+            </p>
+          )}
         </div>
         <button
           onClick={() => setOpen((v) => !v)}
@@ -136,6 +150,33 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-mono text-xs text-slate mb-1">{t('card.distanceActual')}</label>
+              <input
+                type="number"
+                min={0}
+                max={500}
+                step="0.01"
+                value={distance}
+                onChange={(e) => setDistance(e.target.value)}
+                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
+              />
+            </div>
+            <div>
+              <label className="block font-mono text-xs text-slate mb-1">{t('card.avgHrActual')}</label>
+              <input
+                type="number"
+                min={30}
+                max={240}
+                step="1"
+                value={avgHr}
+                onChange={(e) => setAvgHr(e.target.value)}
+                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
+              />
             </div>
           </div>
 

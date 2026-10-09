@@ -35,9 +35,11 @@ create policy "profiles_update_coach" on public.profiles
 
 revoke update on public.profiles from anon, authenticated;
 grant update (full_name, age) on public.profiles to authenticated;
--- El entrenador sigue pudiendo cambiar cualquier columna (asignación de
--- coach_id, activar/desactivar atleta, etc.) a través de la policy
--- "profiles_update_coach"; el propio usuario solo su nombre y edad.
+-- NOTA: el REVOKE/GRANT de arriba es por columna y vale para TODOS los usuarios
+-- autenticados, entrenador incluido. Por eso el entrenador no edita otras
+-- columnas de profiles directamente: lo hace con funciones security definer
+-- (set_athlete_active, delete_athlete…). La policy "profiles_update_coach" solo
+-- decide sobre qué FILAS puede escribir, no qué columnas.
 
 -- ----------------------------------------------------------------------------
 -- S-07 (parcial): submit_session no validaba longitud de texto ni exigía que

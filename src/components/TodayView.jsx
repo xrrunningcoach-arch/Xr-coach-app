@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import { useT } from '../i18n'
 import { ui } from '../ui/ui'
 import { addDays, diffDays, longDayTitle, mondayOf } from '../lib/dates'
-import { sessionKm } from '../lib/stats'
+import { sessionKm, sessionKmDone } from '../lib/stats'
 import { disciplineColor } from '../lib/disciplineColors'
 import { findDiscipline } from '../lib/disciplines'
 import SessionCard from './SessionCard'
@@ -38,7 +38,9 @@ function QuickLog({ session, onSaved }) {
       p_link_url: session.link_url || '',
       p_duration_actual_min: status === 'completado' && minutes !== '' ? Number(minutes) : null,
       p_rpe_actual_value: status === 'completado' && rpe !== '' ? Number(rpe) : null,
-      p_metrics: session.metrics || {},
+      p_metrics: session.metrics_actual || {},
+      p_distance_actual_km: null,
+      p_avg_hr_actual: null,
     })
     setSaving(false)
     if (error) {
@@ -177,7 +179,7 @@ export default function TodayView({ today, profile, plan, race, sessions, discip
         total: week.length,
         done: week.filter((s) => s.status === 'completado').length,
         km: week.reduce((n, s) => n + sessionKm(s), 0),
-        kmDone: week.filter((s) => s.status === 'completado').reduce((n, s) => n + sessionKm(s), 0),
+        kmDone: week.reduce((n, s) => n + sessionKmDone(s), 0),
       },
     }
   }, [sessions, today])

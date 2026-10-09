@@ -327,7 +327,8 @@ export function applicationToRpc({ preview, plan, item }) {
   return {
     plan: {
       id: plan?.id ?? null,
-      custom_race_name: item.name,
+      // Vacío a propósito: el nombre de la plantilla no es una «prueba objetivo».
+      custom_race_name: plan?.id ? undefined : '',
       start_date: preview.planStart,
       duration_weeks: Math.max(1, preview.lastWeek),
     },

@@ -160,6 +160,20 @@ export function shortDate(iso) {
   return fmt({ day: 'numeric', month: 'short' }, iso).replace('.', '')
 }
 
+// Solo el mes abreviado: "oct" / "urr" (sin el día, válido en ES y EU).
+export function monthShort(iso) {
+  if (dateLang === 'eu') return NAMES.eu.monthShort[monthOf(iso)]
+  return fmt({ month: 'short' }, iso).replace('.', '')
+}
+
+// Fecha LOCAL (YYYY-MM-DD) de un instante, p. ej. un completed_at en UTC.
+// Una sesión completada a las 00:30 en España es del día local, no del UTC.
+export function localDateOf(timestamp) {
+  const d = new Date(timestamp)
+  if (Number.isNaN(d.getTime())) return String(timestamp).slice(0, 10)
+  return todayISO(d)
+}
+
 export function weekRangeTitle(mondayISO) {
   const end = addDays(mondayISO, 6)
   const sameMonth = monthOf(mondayISO) === monthOf(end)

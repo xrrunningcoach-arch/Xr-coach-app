@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { sessionKm, sessionKmDone } from '../lib/stats'
 
 const COLORS = { grid: 'var(--chart-grid)', axis: 'var(--chart-text)', planned: 'var(--chart-accent)', done: 'var(--chart-done)' }
 
@@ -21,9 +22,8 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
     sessions.forEach((s) => {
       const row = rows[(s.week_number || 1) - 1]
       if (!row) return
-      const km = Number(s.km_estimated) || 0
-      row.planned += km
-      if (s.status === 'completado') row.done += km
+      row.planned += sessionKm(s)
+      row.done += sessionKmDone(s)
     })
     return rows
   }, [sessions, totalWeeks])

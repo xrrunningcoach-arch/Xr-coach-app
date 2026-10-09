@@ -10,7 +10,7 @@ import GoalsView from '../components/GoalsView'
 import TodayView from '../components/TodayView'
 import { useT } from '../i18n'
 import useToday from '../components/calendar/useToday'
-import { sessionKm } from '../lib/stats'
+import { sessionKm, sessionKmDone } from '../lib/stats'
 import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
 
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
@@ -119,9 +119,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
 
   const progress = useMemo(() => {
     const totalKm = sessions.reduce((sum, s) => sum + sessionKm(s), 0)
-    const doneKm = sessions
-      .filter((s) => s.status === 'completado')
-      .reduce((sum, s) => sum + sessionKm(s), 0)
+    const doneKm = sessions.reduce((sum, s) => sum + sessionKmDone(s), 0)
     const totalSessions = sessions.length
     const doneSessions = sessions.filter((s) => s.status === 'completado').length
     return { totalKm, doneKm, totalSessions, doneSessions }

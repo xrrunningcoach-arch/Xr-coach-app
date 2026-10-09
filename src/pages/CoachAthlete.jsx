@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
-import { generatePlanSkeleton, SESSION_TYPES_SUGGESTED } from '../lib/planGenerator'
-import { toSafeHref } from '../lib/safeUrl'
-import { fetchDisciplines, findDiscipline } from '../lib/disciplines'
-import { weeklyLoad, loadBarWidth } from '../lib/load'
-import StatusBadge from '../components/StatusBadge'
+import { generatePlanSkeleton } from '../lib/planGenerator'
+import { fetchDisciplines } from '../lib/disciplines'
+import { weeklyLoad } from '../lib/load'
+import WeekLoadBars from '../components/WeekLoadBars'
 import LoadingScreen from '../components/LoadingScreen'
-import DisciplineFields from '../components/DisciplineFields'
-import StrengthExercises from '../components/StrengthExercises'
 import AthleteSummary from '../components/AthleteSummary'
 import ChatPanel from '../components/ChatPanel'
 import ZonesTable from '../components/ZonesTable'
@@ -575,38 +572,6 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
           </div>
         )
       })}
-    </div>
-  )
-}
-
-// Carga total (session-RPE) y carga de impacto de la semana, como dos
-// barras separadas: la misma carga "total" pesa distinto en articulaciones
-// según venga de agua, fuerza o asfalto, y mezclarlas en una sola cifra
-// ocultaría justo el riesgo que se quiere ver antes de guardar la semana.
-function WeekLoadBars({ weekLoad, maxLoad, maxImpact }) {
-  if (!weekLoad || weekLoad.loggedSessions === 0) {
-    return (
-      <div className="px-5 py-2 text-xs text-slate italic border-b border-mist">
-        Carga de la semana: sin sesiones registradas todavía.
-      </div>
-    )
-  }
-  return (
-    <div className="px-5 py-3 border-b border-mist space-y-1.5">
-      <LoadBar label="Carga total" value={weekLoad.load} max={maxLoad} colorClass="bg-primary" />
-      <LoadBar label="Carga de impacto" value={weekLoad.impactLoad} max={maxImpact} colorClass="bg-brand" />
-    </div>
-  )
-}
-
-function LoadBar({ label, value, max, colorClass }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-[11px] text-slate w-28 shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-mist rounded-full overflow-hidden">
-        <div className={`h-full ${colorClass}`} style={{ width: `${loadBarWidth(value, max)}%` }} />
-      </div>
-      <span className="font-mono text-[11px] text-navy-light w-12 text-right shrink-0">{Math.round(value)}</span>
     </div>
   )
 }
