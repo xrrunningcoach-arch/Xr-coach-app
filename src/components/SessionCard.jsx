@@ -4,6 +4,7 @@ import StatusBadge from './StatusBadge'
 import DisciplineFields from './DisciplineFields'
 import { useT } from '../i18n'
 import { ui } from '../ui/ui'
+import ExerciseList from './ExerciseList'
 import { formatPace } from '../lib/stats'
 
 // Tarjeta de actividad del atleta. Movida SIN CAMBIOS desde AthleteDashboard.jsx
@@ -67,6 +68,7 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
             {session.rpe_theoretical ? ` · ${t('card.theoretical', { v: session.rpe_theoretical })}` : ''}
           </p>
           {discipline && <DisciplineFields discipline={discipline} values={session.metrics} readOnly />}
+          {discipline?.metrics_schema?.has_exercises && <ExerciseList sessionId={session.id} />}
           {(session.distance_actual_km != null || session.avg_hr_actual != null) && (
             <p className="font-mono text-xs text-navy-light mt-1">
               {session.distance_actual_km != null ? t('card.distanceDone', { km: session.distance_actual_km }) : ''}
