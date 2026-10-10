@@ -17,7 +17,11 @@ function codeFromUrl() {
 
 export default function Signup() {
   const t = useT()
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [role, setRole] = useState('athlete')
+  const [coaches, setCoaches] = useState([])
+  const [coachId, setCoachId] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [inviteCode, setInviteCode] = useState(codeFromUrl)
@@ -35,6 +39,9 @@ export default function Signup() {
     supabase.rpc('invite_required').then(({ data, error: err }) => {
       if (alive && !err) setInviteRequired(data === true)
     })
+    supabase.rpc('list_coaches').then(({ data, error: err }) => {
+      if (alive && !err) setCoaches(data || [])
+    })
     return () => {
       alive = false
     }
@@ -45,7 +52,13 @@ export default function Signup() {
     setError(null)
     setLoading(true)
 
-    if (inviteRequired) {
+    if (role === 'athlete' && coaches.length > 0 && !coachId) {
+      setLoading(false)
+      setError(t('auth.chooseCoachError'))
+      return
+    }
+
+    if (inviteRequired && role === 'athlete') {
       const { data: ok, error: chkErr } = await supabase.rpc('check_invite_code', { p_code: inviteCode.trim() })
       if (chkErr || ok !== true) {
         setLoading(false)
@@ -59,8 +72,12 @@ export default function Signup() {
       password,
       options: {
         data: {
-          full_name: fullName,
-          invite_code: inviteRequired ? inviteCode.trim() : undefined,
+          full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          role,
+          coach_id: role === 'athlete' && coachId ? coachId : undefined,
+          invite_code: inviteRequired && role === 'athlete' ? inviteCode.trim() : undefined,
           consent_version: LEGAL_VERSION,
           consent_at: new Date().toISOString(),
         },
@@ -89,6 +106,7 @@ export default function Signup() {
         <div className="text-center">
           <h1 className="font-display text-xl text-navy mb-3">{t('auth.checkEmailTitle')}</h1>
           <p className="text-sm text-slate mb-6">{t('auth.checkEmailBody')}</p>
+          {role === 'coach' && <p className="text-sm text-slate mb-6">{t('auth.coachPendingNote')}</p>}
           <Link to="/login" className="text-navy font-semibold hover:text-red text-sm">
             {t('auth.goLogin')}
           </Link>
@@ -104,10 +122,34 @@ export default function Signup() {
       <p className="text-sm text-slate mb-5">{t('auth.signupSubtitle')}</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block">
-          <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.fullName')}</span>
-          <input type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
-        </label>
+        <fieldset>
+          <legend className="block font-mono text-xs text-slate mb-1.5">{t('auth.iAm')}</legend>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup">
+            {['athlete', 'coach'].map((r) => (
+              <button
+                key={r}
+                type="button"
+                role="radio"
+                aria-checked={role === r}
+                onClick={() => setRole(r)}
+                className={`py-2.5 rounded-md border text-sm font-semibold ${role === r ? 'bg-brand text-white border-brand' : 'border-mist text-slate hover:border-navy-light'}`}
+              >
+                {t('auth.role.' + r)}
+              </button>
+            ))}
+          </div>
+          {role === 'coach' && <p className="text-xs text-slate mt-1.5">{t('auth.coachApprovalHelp')}</p>}
+        </fieldset>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.firstName')}</span>
+            <input type="text" required autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={field} />
+          </label>
+          <label className="block">
+            <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.lastName')}</span>
+            <input type="text" required autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className={field} />
+          </label>
+        </div>
         <label className="block">
           <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.email')}</span>
           <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} placeholder="tu@ejemplo.com" />
@@ -116,7 +158,18 @@ export default function Signup() {
           <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.password')}</span>
           <input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} placeholder={t('auth.passwordHint')} />
         </label>
-        {inviteRequired && (
+        {role === 'athlete' && coaches.length > 0 && (
+          <label className="block">
+            <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.chooseCoach')}</span>
+            <select required value={coachId} onChange={(e) => setCoachId(e.target.value)} className={field}>
+              <option value="">{t('auth.chooseCoachPlaceholder')}</option>
+              {coaches.map((c) => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {inviteRequired && role === 'athlete' && (
           <label className="block">
             <span className="block font-mono text-xs text-slate mb-1.5">{t('auth.inviteCode')}</span>
             <input type="text" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className={`${field} font-mono uppercase`} placeholder="XR-XXXXXXXX" autoCapitalize="characters" />

@@ -5,6 +5,7 @@ import { useT } from '../i18n'
 import AthleteDashboard from './AthleteDashboard'
 import AthleteProfileForm from './AthleteProfileForm'
 import AnamnesisForm from '../components/AnamnesisForm'
+import CoachChooser from '../components/CoachChooser'
 import DataExport from '../components/DataExport'
 import ChatPanel from '../components/ChatPanel'
 import Sidebar from '../components/Sidebar'
@@ -69,6 +70,7 @@ export default function AthleteHome() {
 
         {section === 'perfil' && (
           <div className="space-y-6">
+            <CoachChooser />
             <AthleteProfileForm />
             <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">
               <h2 className="font-display text-xl text-navy">{t('profile.anamnesisTitle')}</h2>

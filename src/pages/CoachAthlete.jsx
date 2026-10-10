@@ -17,6 +17,7 @@ import { cycleDatesFromWeeks } from '../lib/cycles'
 import { fetchExercisesBySession } from '../lib/templatesApi'
 import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../lib/templates'
 import { effectiveMaxHr, pickMaxHr, sanitizeManualZones, zonesFromThresholds } from '../lib/zones'
+import PlanActions from '../components/PlanActions'
 import ThresholdTestForm from '../components/ThresholdTestForm'
 import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
@@ -187,6 +188,7 @@ export default function CoachAthlete() {
             mesocycles={mesocycles}
             sessions={sessions}
             disciplines={disciplines}
+            races={races}
             onReload={loadAll}
             onSaveToLibrary={saveToLibrary}
           />
@@ -465,7 +467,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 // ----------------------------------------------------------------------------
 // EDITAR PLAN + SESIONES + EVALUACIÓN
 // ----------------------------------------------------------------------------
-function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveToLibrary }) {
+function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, onSaveToLibrary }) {
   const weeks = useMemo(() => {
     const byWeek = {}
     sessions.forEach((s) => {
@@ -533,15 +535,18 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, onReload, onSaveT
             {plan.start_date || '—'} → {plan.race_date || '—'} · Objetivo: {plan.target_pace || '—'}
           </p>
         </div>
-        <select
-          value={plan.status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          className="bg-white/10 border border-white/20 rounded-sm px-3 py-2 text-sm"
-        >
-          <option value="draft">Borrador</option>
-          <option value="active">Activo</option>
-          <option value="completed">Completado</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={plan.status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="bg-white/10 border border-white/20 rounded-sm px-3 py-2 text-sm"
+          >
+            <option value="draft">Borrador</option>
+            <option value="active">Activo</option>
+            <option value="completed">Completado</option>
+          </select>
+          <PlanActions plan={plan} races={races} sessionCount={sessions.length} onChanged={onReload} />
+        </div>
       </div>
 
       {weeks.map(({ week, items }) => {

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { useT } from '../i18n'
 import LoadingScreen from '../components/LoadingScreen'
 import InvitePanel from '../components/InvitePanel'
+import PendingCoaches from '../components/PendingCoaches'
 import { IconAlert, IconUsers } from '../components/icons'
 import { ui } from '../ui/ui'
 import { addDays, todayISO } from '../lib/dates'
@@ -165,6 +166,7 @@ export default function CoachHome() {
         </button>
       </div>
       {showInvite && <InvitePanel onClose={() => setShowInvite(false)} />}
+      <PendingCoaches />
 
       {error && <p className="text-red text-sm">{error}</p>}
 
