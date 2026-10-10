@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { useT } from '../i18n'
+import { sessionKm, sessionKmDone } from '../lib/stats'
 
 const COLORS = { grid: 'var(--chart-grid)', axis: 'var(--chart-text)', planned: 'var(--chart-accent)', done: 'var(--chart-done)' }
 
@@ -14,6 +16,7 @@ function niceMax(value) {
 // Gráfico "Semanas y volumen": línea con los km planificados por semana y
 // barras con los km ya completados. Es SVG puro, sin librerías externas.
 export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
+  const t = useT()
   const data = useMemo(() => {
     const maxSessionWeek = sessions.reduce((m, s) => Math.max(m, s.week_number || 0), 0)
     const weeks = Math.max(Number(totalWeeks) || 0, maxSessionWeek, 1)
@@ -21,9 +24,8 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
     sessions.forEach((s) => {
       const row = rows[(s.week_number || 1) - 1]
       if (!row) return
-      const km = Number(s.km_estimated) || 0
-      row.planned += km
-      if (s.status === 'completado') row.done += km
+      row.planned += sessionKm(s)
+      row.done += sessionKmDone(s)
     })
     return rows
   }, [sessions, totalWeeks])
@@ -64,7 +66,7 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
             viewBox={`0 0 ${W} ${H}`}
             className="w-full h-auto"
             role="img"
-            aria-label="Gráfico del volumen semanal en kilómetros: planificado y completado"
+            aria-label={t('chart.weeklyKmAria')}
           >
             {ticks.map((t) => (
               <g key={t}>

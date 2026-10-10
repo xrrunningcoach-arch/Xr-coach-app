@@ -5,6 +5,7 @@ import { useT } from '../i18n'
 import AthleteDashboard from './AthleteDashboard'
 import AthleteProfileForm from './AthleteProfileForm'
 import AnamnesisForm from '../components/AnamnesisForm'
+import DataExport from '../components/DataExport'
 import ChatPanel from '../components/ChatPanel'
 import Sidebar from '../components/Sidebar'
 import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget, IconUser } from '../components/icons'
@@ -73,6 +74,7 @@ export default function AthleteHome() {
               <h2 className="font-display text-xl text-navy">{t('profile.anamnesisTitle')}</h2>
               <AnamnesisForm athleteId={user.id} basicProfile={profile} />
             </div>
+            <DataExport />
           </div>
         )}
 

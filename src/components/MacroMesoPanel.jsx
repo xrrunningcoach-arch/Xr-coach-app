@@ -4,6 +4,7 @@ import StatusBadge from './StatusBadge'
 import { dateForWeekday, mondayOf, shortDate } from '../lib/dates'
 import { cycleDatesFromWeeks, cycleRange, cycleWeeksFromDates, overlappingCycles } from '../lib/cycles'
 import { ui } from '../ui/ui'
+import { sessionKm } from '../lib/stats'
 
 // Semáforo de macrociclos y mesociclos: rojo = pendiente, ámbar = en curso,
 // verde = completado. Se cambia a mano.
@@ -281,7 +282,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       const items = sessionsByWeek[w] || []
       total += items.length
       done += items.filter((s) => s.status === 'completado').length
-      km += items.reduce((sum, s) => sum + (Number(s.km_estimated) || 0), 0)
+      km += items.reduce((sum, s) => sum + sessionKm(s), 0)
     }
     return { total, done, km }
   }
@@ -450,7 +451,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     const open = openWeeks.has(key)
     const state = weekState(items)
     const done = items.filter((s) => s.status === 'completado').length
-    const km = items.reduce((sum, s) => sum + (Number(s.km_estimated) || 0), 0)
+    const km = items.reduce((sum, s) => sum + sessionKm(s), 0)
     return (
       <div key={key} className="border border-mist rounded-sm bg-surface">
         <button

@@ -32,6 +32,13 @@ export function sessionKm(s) {
   return meters != null ? meters / 1000 : 0
 }
 
+// Km realmente hechos: si el atleta registró distancia real, esa; si no, lo previsto.
+export function sessionKmDone(s) {
+  if (s.status !== 'completado') return 0
+  const actual = parseNum(s.distance_actual_km)
+  return actual != null ? actual : sessionKm(s)
+}
+
 export function sessionElevation(s) {
   const m = s.metrics || {}
   return parseNum(m.desnivel_m) ?? parseNum(m.desnivel_positivo_m) ?? 0
@@ -97,7 +104,7 @@ export function kmByDiscipline(sessions, disciplines) {
     row.planned += km
     row.count += 1
     if (s.status === 'completado') {
-      row.done += km
+      row.done += sessionKmDone(s)
       row.doneCount += 1
     }
   })
@@ -155,7 +162,7 @@ export function weeklySeries(sessions, win) {
     row.plannedElev += elev
     row.sessions += 1
     if (s.status === 'completado') {
-      row.doneKm += km
+      row.doneKm += sessionKmDone(s)
       row.doneElev += elev
       row.doneSessions += 1
     }
@@ -190,4 +197,13 @@ export function formatDuration(minutes) {
   const m = total % 60
   if (h === 0) return `${m} min`
   return `${h} h ${String(m).padStart(2, '0')} min`
+}
+
+// Ritmo medio "m:ss /km" a partir de minutos y km reales. '' si no hay datos.
+export function formatPace(minutes, km) {
+  const m = parseNum(minutes)
+  const d = parseNum(km)
+  if (m == null || d == null || d <= 0 || m <= 0) return ''
+  const secPerKm = Math.round((m * 60) / d)
+  return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, '0')} /km`
 }

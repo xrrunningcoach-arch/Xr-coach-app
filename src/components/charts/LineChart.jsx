@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { tr } from '../../i18n'
 import { INK, niceMax, ticks } from './scale'
 import { TooltipBox, useTooltip } from './tooltip'
 
@@ -95,7 +96,7 @@ export default function LineChart({ labels, tooltipTitles, series, format = (v) 
           height={innerH}
           fill="transparent"
           tabIndex={0}
-          aria-label={`${ariaLabel}. Usa las flechas izquierda y derecha para recorrer los puntos.`}
+          aria-label={`${ariaLabel}. ${tr('chart.arrowsHint')}`}
           onPointerMove={(e) => {
             const i = indexFromEvent(e)
             setHover(i)

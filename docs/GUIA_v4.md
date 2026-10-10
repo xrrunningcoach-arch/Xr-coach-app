@@ -10,8 +10,8 @@ Para Xabat. Tiempo estimado: 20–30 minutos la primera vez.
 ## 1. Base de datos (Supabase) — hazlo ANTES de publicar
 
 1. Entra en tu proyecto de Supabase → **SQL Editor → New query**.
-2. **Si ya tenías la v3 funcionando:** copia el contenido de `supabase/migrations/0005_aplicar_plantillas_e_invitaciones.sql`, pégalo y pulsa **Run**. Con eso basta.
-3. **Si empiezas un proyecto nuevo:** ejecuta uno por uno, en este orden: `supabase/schema.sql`, `0001`, `0002`, `0003`, `0004`, `0005`.
+2. **Si ya tenías la v4 anterior funcionando:** ejecuta, en este orden, `supabase/migrations/0006_integridad_metrics_y_datos_reales.sql` y `0007_tests_umbral_hrv_y_limite_invitaciones.sql`. Si venías de v3, ejecuta antes `0005`.
+3. **Si empiezas un proyecto nuevo:** ejecuta uno por uno, en este orden: `supabase/schema.sql`, `0001`, `0002`, `0003`, `0004`, `0005`, `0006`, `0007`.
 4. Tu email de entrenador: `update app_config set coach_emails = array['tu-email@ejemplo.com'];`
 5. Anota en **Project Settings → API** el *Project URL* y la clave *anon public*.
 
@@ -73,8 +73,8 @@ Los umbrales están en `src/lib/compliance.js` (`THRESHOLDS`) y se pueden ajusta
 ## 7. Qué se ha verificado y qué no (sé honesto con tus atletas)
 
 Verificado en el entorno de desarrollo:
-- 43 tests automáticos de la lógica (fechas incluyendo euskera, estadísticas, ciclos, plantillas, zonas, cumplimiento, paridad ES/EU).
-- Migración 0005 y sus pruebas (`supabase/tests/0005_test.sql`) en un Postgres 16 local: atomicidad, permisos, invitaciones y la integración JS→SQL.
+- 47 tests automáticos de la lógica (fechas incluyendo euskera, estadísticas, ciclos, plantillas, zonas, cumplimiento, paridad ES/EU).
+- Migraciones 0001–0007 aplicadas (y 0006/0007 repetidas, para comprobar que son idempotentes) en un Postgres 16 local de prueba, con `supabase/tests/0005_test.sql` y `0006_0007_test.sql` (metrics del entrenador intactas, permisos, test de umbrales, HRV, límite de intentos): atomicidad, permisos, invitaciones y la integración JS→SQL.
 - Pantallas revisadas en navegador (Chromium) contra un Supabase simulado: claro/oscuro, móvil/escritorio, ES/EU.
 
 **No verificado** (no había acceso a npm ni a tu Supabase):
@@ -98,3 +98,11 @@ Verificado en el entorno de desarrollo:
 | Un atleta no puede registrarse | Códigos obligatorios | Envíale el enlace con código o desactiva «Exigir código» |
 | Textos en castellano con euskera activo | Pantalla aún sin traducir | Ver sección 8 |
 | La app no se actualiza en el móvil | Service worker en caché | Cierra la app del todo y vuelve a abrirla |
+
+
+## 10. Antes de publicar (a rellenar por el titular)
+
+- Rellena `CONTROLLER` en `src/lib/legal.js` (nombre, NIF, dirección, correo). Los textos de privacidad y términos son un **borrador**: que los revise un profesional jurídico.
+- En Supabase → Authentication → Providers → Email, sube la longitud mínima de contraseña a 8 y añade tu URL de GitHub Pages a *Redirect URLs* (necesario para el enlace de recuperación de contraseña).
+- El enlace de recuperación usa PKCE: debe abrirse en el mismo navegador donde se pidió.
+- Copias de seguridad: el plan gratuito de Supabase no las incluye de forma fiable; decide si pasar a Pro.

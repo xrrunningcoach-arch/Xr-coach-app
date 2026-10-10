@@ -5,16 +5,18 @@ import { useT } from '../i18n'
 // a partir de la FC máxima que reciba por props. Si el entrenador ha fijado
 // zonas a mano (manualZones), esas zonas TIENEN PRIORIDAD sobre el cálculo
 // automático y se marcan como «Manual».
-export default function ZonesTable({ maxHr, sourceLabel, manualZones }) {
+export default function ZonesTable({ maxHr, sourceLabel, manualZones, testZones }) {
   const t = useT()
-  const zones = resolveZones({ maxHr, manualZones })
+  const zones = resolveZones({ maxHr, manualZones, testZones })
   const manualCount = zones.filter((z) => z.source === 'manual').length
+  const testCount = zones.filter((z) => z.source === 'test').length
   return (
     <div className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-lg text-navy">{t('zones.title')}</h3>
         <span className="font-mono text-[11px] text-slate">
           {maxHr ? `${t('zones.maxHr', { hr: maxHr })}${sourceLabel ? ` · ${['real', 'estimada'].includes(sourceLabel) ? t('zones.src.' + sourceLabel) : sourceLabel}` : ''}` : manualCount ? t('zones.manualByCoach') : t('zones.missing')}
+          {testCount > 0 ? ` · ${t('zones.testBased')}` : ''}
           {manualCount > 0 && maxHr ? ` · ${t('zones.manualCount', { count: manualCount })}` : ''}
         </span>
       </div>
@@ -36,7 +38,12 @@ export default function ZonesTable({ maxHr, sourceLabel, manualZones }) {
                   <span className="inline-block w-8 text-center font-mono text-xs font-bold bg-primary text-white rounded-sm py-0.5 mr-2">
                     {z.code}
                   </span>
-                  {t(`zone.${z.code}.name`)}
+                  {z.code === 'Z4' && z.source !== 'auto' ? t('zone.Z4.nameTest') : t(`zone.${z.code}.name`)}
+                  {z.source === 'test' && (
+                    <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-brand/15 text-navy">
+                      {t('zones.test')}
+                    </span>
+                  )}
                   {z.source === 'manual' && (
                     <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-red/15 text-red-deep">
                       {t('zones.manual')}

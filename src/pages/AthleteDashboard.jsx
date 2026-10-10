@@ -10,8 +10,9 @@ import GoalsView from '../components/GoalsView'
 import TodayView from '../components/TodayView'
 import { useT } from '../i18n'
 import useToday from '../components/calendar/useToday'
-import { sessionKm } from '../lib/stats'
-import { effectiveMaxHr, sanitizeManualZones } from '../lib/zones'
+import { sessionKm, sessionKmDone } from '../lib/stats'
+import { effectiveMaxHr, pickMaxHr, sanitizeManualZones, zonesFromThresholds } from '../lib/zones'
+import ThresholdsPanel from '../components/ThresholdsPanel'
 
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
 // panel lateral (AthleteHome); este componente recibe la sección activa y
@@ -28,6 +29,8 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
   const [milestones, setMilestones] = useState([])
   const [hrZones, setHrZones] = useState(null)
   const [manualZones, setManualZones] = useState({})
+  const [thresholdTest, setThresholdTest] = useState(null)
+  const [hrv, setHrv] = useState([])
   const [athleteProfile, setAthleteProfile] = useState(null)
   const [tests, setTests] = useState([])
   const [evaluationsBySession, setEvaluationsBySession] = useState({})
@@ -57,10 +60,14 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
 
     // Zonas manuales y perfil: no dependen del plan (si aún no existen las
     // tablas de la migración 0004, simplemente quedan vacías).
-    const [{ data: manual }, { data: profileRow }] = await Promise.all([
+    const [{ data: manual }, { data: profileRow }, { data: thr }, { data: hrvRows }] = await Promise.all([
       supabase.from('athlete_hr_zones').select('manual_zones').eq('athlete_id', user.id).maybeSingle(),
       supabase.from('athlete_profiles').select('*').eq('profile_id', user.id).maybeSingle(),
+      supabase.from('threshold_tests').select('*').eq('athlete_id', user.id).order('test_date', { ascending: false }).limit(1),
+      supabase.from('hrv_readings').select('*').eq('athlete_id', user.id).order('reading_date', { ascending: false }).limit(60),
     ])
+    setThresholdTest(thr?.[0] || null)
+    setHrv(hrvRows || [])
     setManualZones(sanitizeManualZones(manual?.manual_zones))
     setAthleteProfile(profileRow || null)
 
@@ -119,9 +126,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
 
   const progress = useMemo(() => {
     const totalKm = sessions.reduce((sum, s) => sum + sessionKm(s), 0)
-    const doneKm = sessions
-      .filter((s) => s.status === 'completado')
-      .reduce((sum, s) => sum + sessionKm(s), 0)
+    const doneKm = sessions.reduce((sum, s) => sum + sessionKmDone(s), 0)
     const totalSessions = sessions.length
     const doneSessions = sessions.filter((s) => s.status === 'completado').length
     return { totalKm, doneKm, totalSessions, doneSessions }
@@ -129,7 +134,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
 
   if (loading) return <LoadingScreen />
 
-  const hasManualZones = Object.keys(manualZones).length > 0
+  const hasManualZones = Object.keys(manualZones).length > 0 || !!thresholdTest
 
   if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones)) {
     return (
@@ -188,7 +193,12 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
 
       {section === 'estadisticas' && <StatsDashboard sessions={sessions} disciplines={disciplines} />}
 
-      {section === 'zonas' && <HrZonesView hrZones={hrZones} manualZones={manualZones} />}
+      {section === 'zonas' && (
+        <div className="space-y-4">
+          <HrZonesView hrZones={hrZones} manualZones={manualZones} test={thresholdTest} />
+          <ThresholdsPanel test={thresholdTest} hrv={hrv} athleteId={user.id} today={today} onChanged={() => loadData(true)} />
+        </div>
+      )}
 
       {section === 'objetivos' && (
         <GoalsView
@@ -215,12 +225,15 @@ function Stat({ label, value }) {
   )
 }
 
-function HrZonesView({ hrZones, manualZones }) {
+function HrZonesView({ hrZones, manualZones, test }) {
   const t = useT()
-  const hasManual = Object.keys(manualZones).length > 0
+  const testZones = test ? zonesFromThresholds({ vt1Hr: test.vt1_hr, vt2Hr: test.vt2_hr, maxHr: test.max_hr }) : {}
+  const hasManual = Object.keys(manualZones).length > 0 || Object.keys(testZones).length > 0
   if (!hrZones && !hasManual) return <EmptyState text={t('zones.empty')} />
-  const used = hrZones ? effectiveMaxHr({ maxHrReal: hrZones.max_hr_real, age: hrZones.age }) : { value: null, source: null }
-  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} />
+  // Una sola FC máx.: la del test de umbrales más reciente manda sobre la del plan.
+  const testMax = pickMaxHr(test?.max_hr)
+  const used = effectiveMaxHr({ maxHrReal: testMax ?? hrZones?.max_hr_real, age: hrZones?.age })
+  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} testZones={testZones} />
 }
 
 function TestsView({ tests }) {

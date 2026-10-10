@@ -22,10 +22,10 @@ Guía completa: [`docs/GUIA_v4.md`](docs/GUIA_v4.md).
 2. Crea un **New project** (elige una contraseña de base de datos y guárdala).
 3. Ve a **SQL Editor → New query** y ejecuta, **uno a uno y en este orden**,
    [`supabase/schema.sql`](./supabase/schema.sql) y después las migraciones
-   `supabase/migrations/0001` … `0005` (todas son idempotentes: si repites alguna no pasa nada).
+   `supabase/migrations/0001` … `0007` (todas son idempotentes: si repites alguna no pasa nada).
    Esto crea las tablas, la seguridad por filas (RLS) y las funciones (`submit_session`,
    `apply_template_application`, códigos de invitación…).
-   *Si ya tenías la v3 funcionando, solo necesitas ejecutar `0005`.*
+   *Si ya tenías la v4 funcionando, ejecuta solo `0006` y `0007` (son idempotentes).*
 4. Abre `supabase/schema.sql` y localiza esta línea, cerca del principio:
    ```sql
    values (1, array['xr.running.coach@gmail.com'])
@@ -104,9 +104,9 @@ Necesita conexión para guardar; sin ella muestra la última pantalla cargada.
 ## 5. Desarrollo
 
 ```bash
-npm install     # genera package-lock.json -> súbelo al repositorio
+npm ci          # instala exactamente lo del package-lock.json (Node 22 o superior)
 npm run dev     # http://localhost:5173
-npm test        # 43 tests (node:test + tsx), sin necesidad de Supabase
+npm test        # 47 tests (node:test + tsx), sin necesidad de Supabase
 npm run build   # genera dist/
 ```
 
@@ -120,8 +120,8 @@ src/
   pages/           Login, Signup, AthleteHome, CoachHome, CoachAthlete, CoachLibrary…
 public/            manifest.webmanifest, sw.js (offline mínimo), iconos
 supabase/
-  schema.sql · migrations/0001…0005   base de datos
-  tests/0005_test.sql                 pruebas de la migración 0005 (atomicidad, RLS, invitaciones)
+  schema.sql · migrations/0001…0007   base de datos
+  supabase/tests/                     pruebas SQL: 0005 (atomicidad, RLS, invitaciones) y 0006/0007 (metrics, umbrales, HRV, límite de intentos)
 tests/             pruebas de la lógica en src/lib y de las traducciones
 ```
 
@@ -138,5 +138,5 @@ y úsala con `const t = useT(); t('clave')`.
 
 ## Historial
 
-v2: archivar atletas, macrociclos, chat · v3: calendario, estadísticas, biblioteca, zonas manuales ([guía v3](docs/GUIA_v3.md)) ·
+v2: archivar atletas, macrociclos, chat · v3: calendario, estadísticas, biblioteca, zonas manuales (guía v3, retirada: ver [guía v4](docs/GUIA_v4.md)) ·
 v4: Hoy móvil, PWA, tema oscuro, euskera, cumplimiento, invitaciones, tests y CI.

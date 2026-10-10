@@ -46,3 +46,40 @@ test('avisos de solape y desorden', () => {
   assert.equal(manualZoneWarnings({ Z1: { lo: 100, hi: 120 }, Z2: { lo: 110, hi: 140 } }).length, 1)
   assert.equal(manualZoneWarnings({ Z1: { lo: 100, hi: 120 }, Z2: { lo: 90, hi: 95 } }).length, 1)
 })
+
+import { zonesFromThresholds, pickMaxHr } from '../src/lib/zones.js'
+import { hrvTrend } from '../src/lib/hrv.js'
+
+test('zonas derivadas del test de umbrales (VT1/VT2)', () => {
+  const z = zonesFromThresholds({ vt1Hr: 150, vt2Hr: 170, maxHr: 188 })
+  assert.deepEqual(z.Z2, { lo: 135, hi: 150 })
+  assert.deepEqual(z.Z3, { lo: 150, hi: 160 })
+  assert.deepEqual(z.Z4, { lo: 160, hi: 170 })
+  assert.deepEqual(z.Z5, { lo: 170, hi: 188 })
+  assert.deepEqual(sanitizeManualZones(z), z)
+  assert.deepEqual(zonesFromThresholds({ vt1Hr: 170, vt2Hr: 150 }), {})
+  assert.deepEqual(zonesFromThresholds({}), {})
+})
+
+test('prioridad: manual > test > % FC máx', () => {
+  const testZones = zonesFromThresholds({ vt1Hr: 150, vt2Hr: 170, maxHr: 188 })
+  const z = resolveZones({ maxHr: 188, manualZones: { Z4: { lo: 158, hi: 168 } }, testZones })
+  assert.equal(z[3].source, 'manual')
+  assert.equal(z[2].source, 'test')
+  assert.equal(resolveZones({ maxHr: 188 })[3].source, 'auto')
+})
+
+test('pickMaxHr toma la primera FC máx válida', () => {
+  assert.equal(pickMaxHr(null, '', 190, 200), 190)
+  assert.equal(pickMaxHr(50, undefined), null)
+})
+
+test('tendencia de HRV: insuficiente, estable y a la baja', () => {
+  const day = (n) => `2026-10-${String(n).padStart(2, '0')}`
+  const mk = (from, to, v) => Array.from({ length: to - from + 1 }, (_, i) => ({ reading_date: day(from + i), rmssd_ms: v }))
+  assert.equal(hrvTrend(mk(8, 9, 60), '2026-10-09').status, 'insufficient')
+  // base: 1-2 oct (<7 días) no alcanza; se usa un rango amplio con septiembre
+  const base = Array.from({ length: 14 }, (_, i) => ({ reading_date: `2026-09-${String(10 + i).padStart(2, '0')}`, rmssd_ms: 60 }))
+  assert.equal(hrvTrend([...base, ...mk(4, 9, 60)], '2026-10-09').status, 'stable')
+  assert.equal(hrvTrend([...base, ...mk(4, 9, 50)], '2026-10-09').status, 'below')
+})

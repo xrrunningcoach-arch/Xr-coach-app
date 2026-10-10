@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { useT } from '../i18n'
 import { HR_ZONES, manualZoneWarnings, parseManualForm, resolveZones } from '../lib/zones'
 
 const inputCls = 'w-24 border border-mist rounded-sm px-2 py-1.5 text-sm font-mono bg-surface focus:outline-none focus:border-navy'
@@ -16,6 +17,7 @@ function toFields(manualZones) {
 // zona rellenada tiene prioridad sobre el cálculo automático (% de la FC
 // máxima); las zonas vacías siguen siendo automáticas.
 export default function HrZonesManual({ athleteId, coachId, maxHr, manualZones, onPreview, onSaved }) {
+  const t = useT()
   const [fields, setFields] = useState(() => toFields(manualZones))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -101,7 +103,7 @@ export default function HrZonesManual({ athleteId, coachId, maxHr, manualZones, 
                 <tr key={z.code} className="align-top">
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-block w-8 text-center font-mono text-xs font-bold bg-primary text-white rounded-sm py-0.5 mr-2">{z.code}</span>
-                    {z.name}
+                    {t(`zone.${z.code}.name`)}
                   </td>
                   <td className="px-4 py-3 font-mono whitespace-nowrap text-slate">
                     {a.range ? `${a.range[0]} - ${a.range[1]}` : '—'}
