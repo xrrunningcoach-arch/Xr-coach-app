@@ -87,8 +87,8 @@ select pg_temp.check('atómico: no queda ningún dato a medias',
   and (select m from before_counts) = (select count(*) from public.mesocycles)
   and (select s from before_counts) = (select count(*) from public.sessions));
 
-select pg_temp.raises('no se puede usar el plan de otro atleta',
-  format($$select public.apply_template_application('00000000-0000-0000-0000-0000000000c1', %L::jsonb)$$, '{"plan":{"id":"00000000-0000-0000-0000-000000000099"}}'), 'Atleta no encontrado');
+select pg_temp.raises('no se puede aplicar a quien no es tu atleta',
+  format($$select public.apply_template_application('00000000-0000-0000-0000-0000000000c1', %L::jsonb)$$, '{"plan":{"id":"00000000-0000-0000-0000-000000000099"}}'), 'No autorizado');
 
 -- ------------------------------------------------------------- invitaciones
 reset role;
