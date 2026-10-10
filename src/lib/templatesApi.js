@@ -7,7 +7,6 @@ async function loadPlanContext(athleteId) {
     .from('training_plans')
     .select('*')
     .eq('athlete_id', athleteId)
-    .in('status', ['active', 'draft'])
     .order('created_at', { ascending: false })
     .limit(1)
   if (error) throw new Error(error.message)

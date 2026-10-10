@@ -222,10 +222,22 @@ export default function ApplyTemplateModal({ item: fixedItem = null, athlete: fi
                 {preview.plan && preview.plan.status === 'draft' && (
                   <p className="text-slate">El plan del atleta está en borrador: no lo verá hasta que lo actives.</p>
                 )}
+                {preview.shiftWeeks > 0 && (
+                  <p className="text-slate">
+                    La fecha es anterior al inicio del plan ({shortDate(preview.oldPlanStart)}): el plan empezará el lunes{' '}
+                    {shortDate(preview.planStart)} y las semanas ya creadas se renumeran ({preview.shiftWeeks}{' '}
+                    {preview.shiftWeeks === 1 ? 'semana' : 'semanas'} más). Las fechas de las sesiones no cambian.
+                  </p>
+                )}
+                {preview.plan && !['active', 'draft'].includes(preview.plan.status) && (
+                  <p className="text-red">
+                    El plan del atleta está «{preview.plan.status}»: no lo verá en su calendario hasta que lo pongas en activo.
+                  </p>
+                )}
                 {preview.newPlanStart && preview.plan && (
                   <p className="text-slate">El plan no tenía fecha de inicio: se fijará el lunes {shortDate(preview.planStart)}.</p>
                 )}
-                <p className="text-slate">Se añaden a lo que ya tenga el atleta; no se borra ni se mueve nada.</p>
+                <p className="text-slate">Se añaden a lo que ya tenga el atleta; no se borra ni se mueve ninguna sesión.</p>
               </>
             ) : (
               preview.errors.map((m) => (

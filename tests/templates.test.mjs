@@ -50,16 +50,22 @@ test('reutiliza el macrociclo existente', () => {
   assert.equal(r.application.mesocycles[0].order_index, 3)
 })
 
-test('fecha de inicio anterior al plan -> error y no se aplica', () => {
+test('fecha de inicio anterior al plan -> adelanta el inicio del plan y renumera', () => {
   const r = buildApplication({
-    item: mesoItem(), startDate: '2026-09-01', plan: { start_date: '2026-10-05' }, existing: { mesocycles: [], macrocycles: [] }, disciplines,
+    item: mesoItem(), startDate: '2026-09-01', plan: { start_date: '2026-10-05', duration_weeks: 8 },
+    existing: { mesocycles: [{ order_index: 1, week_start: 1, week_end: 4 }], macrocycles: [] }, disciplines,
   })
-  assert.ok(r.errors.length > 0, 'un bloque que empieza antes del plan se rechaza')
+  assert.equal(r.errors.length, 0)
+  assert.equal(r.planStart, '2026-08-31')
+  assert.equal(r.shiftWeeks, 5)
+  assert.equal(r.application.mesocycles[0].week_start, 1)
   const session = buildApplication({
     item: { kind: 'session', name: 'x', payload: { session: emptyTplSession() } },
     startDate: '2026-09-01', plan: { start_date: '2026-10-05' }, existing: { mesocycles: [] }, disciplines,
   })
-  assert.ok(session.errors.length > 0)
+  assert.equal(session.errors.length, 0)
+  assert.equal(session.shiftWeeks, 5)
+  assert.equal(session.application.sessions[0].session.week_number, 1)
 })
 
 test('sin fecha -> error', () => {

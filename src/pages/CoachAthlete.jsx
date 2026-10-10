@@ -11,6 +11,7 @@ import AthleteSummary from '../components/AthleteSummary'
 import ChatPanel from '../components/ChatPanel'
 import ZonesTable from '../components/ZonesTable'
 import CoachCalendar from '../components/CoachCalendar'
+import ApplyTemplateModal from '../components/library/ApplyTemplateModal'
 import SaveToLibraryModal from '../components/library/SaveToLibraryModal'
 import { dateForWeekday, todayISO } from '../lib/dates'
 import { cycleDatesFromWeeks } from '../lib/cycles'
@@ -30,6 +31,7 @@ export default function CoachAthlete() {
   const [loading, setLoading] = useState(true)
   const [athlete, setAthlete] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [applyOpen, setApplyOpen] = useState(false)
   const [races, setRaces] = useState([])
   const [mesocycles, setMesocycles] = useState([])
   const [macrocycles, setMacrocycles] = useState([])
@@ -235,7 +237,21 @@ export default function CoachAthlete() {
         <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
       )}
       {tab === 'calendario' && !plan && (
-        <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
+        <div className="space-y-3">
+          <p className="text-sm text-slate">
+            Este atleta aún no tiene plan. Puedes crearlo en «Plan y sesiones» o aplicar directamente algo de tu biblioteca: el plan se crea solo.
+          </p>
+          <button
+            type="button"
+            onClick={() => setApplyOpen(true)}
+            className="px-3 py-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm"
+          >
+            Aplicar de la biblioteca
+          </button>
+        </div>
+      )}
+      {applyOpen && (
+        <ApplyTemplateModal athlete={athlete} defaultDate={new Date().toISOString().slice(0, 10)} onClose={() => setApplyOpen(false)} onDone={() => loadAll(true)} />
       )}
 
       {libraryDraft && (

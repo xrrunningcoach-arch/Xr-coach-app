@@ -384,7 +384,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
             onClick={() => setImporting(true)}
             className="px-3 py-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm"
           >
-            Importar de la biblioteca
+            Aplicar de la biblioteca
           </button>
         }
       />

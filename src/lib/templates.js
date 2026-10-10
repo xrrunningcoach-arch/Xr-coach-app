@@ -230,7 +230,7 @@ function sessionRow(tpl, date, planStart, disciplines, extra = {}) {
 //   plan:        plan activo del atleta ({ start_date, duration_weeks }) o null
 //   existing:    { mesocycles: [...], macrocycles: [...] } del plan
 //   macroChoice: 'auto' | 'none' | <id de macrociclo> (solo para mesociclos)
-export function buildApplication({ item, startDate, plan, existing, disciplines, macroChoice = 'auto' }) {
+export function buildApplication({ item, startDate, plan, existing, disciplines, macroChoice = 'auto', _shifted = false }) {
   const result = { errors: [], warnings: [], planStart: null, newPlanStart: false }
   if (!isISO(startDate)) {
     result.errors.push('Elige una fecha de inicio.')
@@ -306,6 +306,30 @@ export function buildApplication({ item, startDate, plan, existing, disciplines,
   // Comprobaciones
   const weeks = out.sessions.map((r) => r.session.week_number)
   if (weeks.some((w) => w < 1)) {
+    // Antes fallaba aquí. Ahora, si el atleta ya tiene plan, se adelanta el
+    // inicio del plan (y se renumera lo existente) en lugar de rechazar.
+    if (plan?.start_date && !_shifted) {
+      const earliest = out.sessions.map((r) => r.session.session_date).sort()[0]
+      const newStart = mondayOf(earliest)
+      const shift = Math.round((new Date(planStart) - new Date(newStart)) / (7 * 86400000))
+      if (shift > 0) {
+        const shiftedExisting = {
+          macrocycles: existing?.macrocycles || [],
+          mesocycles: (existing?.mesocycles || []).map((m) => ({
+            ...m,
+            week_start: (m.week_start || 0) + shift,
+            week_end: (m.week_end || 0) + shift,
+          })),
+        }
+        const again = buildApplication({
+          item, startDate, plan: { ...plan, start_date: newStart, duration_weeks: (plan.duration_weeks || 0) + shift },
+          existing: shiftedExisting, disciplines, macroChoice, _shifted: true,
+        })
+        again.shiftWeeks = shift
+        again.oldPlanStart = planStart
+        return again
+      }
+    }
     result.errors.push(
       `Alguna sesión caería antes del inicio del plan (${planStart}). Elige una fecha de inicio igual o posterior.`
     )
@@ -330,6 +354,7 @@ export function applicationToRpc({ preview, plan, item }) {
       // Vacío a propósito: el nombre de la plantilla no es una «prueba objetivo».
       custom_race_name: plan?.id ? undefined : '',
       start_date: preview.planStart,
+      shift_weeks: preview.shiftWeeks || 0,
       duration_weeks: Math.max(1, preview.lastWeek),
     },
     macrocycle: app.macrocycle || null,
