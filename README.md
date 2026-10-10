@@ -25,7 +25,7 @@ Guía completa: [`docs/GUIA_v4.md`](docs/GUIA_v4.md).
    `supabase/migrations/0001` … `0007` (todas son idempotentes: si repites alguna no pasa nada).
    Esto crea las tablas, la seguridad por filas (RLS) y las funciones (`submit_session`,
    `apply_template_application`, códigos de invitación…).
-   *Si ya tenías la v4 funcionando, ejecuta solo `0006` y `0007` (son idempotentes).*
+   *Si ya tenías la v4 funcionando, ejecuta solo `0006` … `0009`, en orden (son idempotentes). `0008` activa varios entrenadores: asegúrate antes de que tu correo está en `app_config.coach_emails`, porque ese correo es el administrador que aprueba a los demás entrenadores. `0009` permite aplicar la biblioteca antes del inicio del plan.*
 4. Abre `supabase/schema.sql` y localiza esta línea, cerca del principio:
    ```sql
    values (1, array['xr.running.coach@gmail.com'])
@@ -106,7 +106,7 @@ Necesita conexión para guardar; sin ella muestra la última pantalla cargada.
 ```bash
 npm ci          # instala exactamente lo del package-lock.json (Node 22 o superior)
 npm run dev     # http://localhost:5173
-npm test        # 47 tests (node:test + tsx), sin necesidad de Supabase
+npm test        # 44 tests (node:test + tsx), sin necesidad de Supabase
 npm run build   # genera dist/
 ```
 
@@ -120,8 +120,8 @@ src/
   pages/           Login, Signup, AthleteHome, CoachHome, CoachAthlete, CoachLibrary…
 public/            manifest.webmanifest, sw.js (offline mínimo), iconos
 supabase/
-  schema.sql · migrations/0001…0007   base de datos
-  supabase/tests/                     pruebas SQL: 0005 (atomicidad, RLS, invitaciones) y 0006/0007 (metrics, umbrales, HRV, límite de intentos)
+  schema.sql · migrations/0001…0009   base de datos
+  supabase/tests/                     pruebas SQL: 0005 (atomicidad, RLS, invitaciones) y 0006/0007 (metrics, umbrales, HRV, límite de intentos), 0008 (varios entrenadores, aprobación, aislamiento) y 0009 (aplicar antes del inicio del plan)
 tests/             pruebas de la lógica en src/lib y de las traducciones
 ```
 

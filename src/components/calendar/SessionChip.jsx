@@ -1,3 +1,4 @@
+import { disciplineName } from '../../lib/disciplines'
 import { IconCheck } from '../icons'
 import { tr } from '../../i18n'
 
@@ -6,7 +7,7 @@ import { tr } from '../../i18n'
 // la vista de mes; la tarjeta completa se muestra en el panel del día y en la
 // vista Semana.
 export function chipLabel(session, discipline) {
-  const base = session.session_type || discipline?.name || tr('common.session')
+  const base = session.session_type || disciplineName(discipline) || tr('common.session')
   const km = session.km_estimated ? ` · ${session.km_estimated} km` : ''
   return `${base}${km}`
 }

@@ -5,7 +5,7 @@ import { ui } from '../ui/ui'
 import { addDays, diffDays, longDayTitle, mondayOf } from '../lib/dates'
 import { sessionKm, sessionKmDone } from '../lib/stats'
 import { disciplineColor } from '../lib/disciplineColors'
-import { findDiscipline } from '../lib/disciplines'
+import { disciplineName, findDiscipline } from '../lib/disciplines'
 import SessionCard from './SessionCard'
 import StatusBadge from './StatusBadge'
 import { IconCheck } from './icons'
@@ -125,7 +125,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-[11px] uppercase text-navy-light">
-              {discipline?.name || t('common.session')}
+              {disciplineName(discipline) || t('common.session')}
               {showDate && session.session_date ? ` · ${longDayTitle(session.session_date)}` : ''}
             </p>
             <h3 className="font-display text-xl text-navy mt-0.5">{session.session_type || t('common.session')}</h3>

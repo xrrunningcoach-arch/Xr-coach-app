@@ -1,3 +1,4 @@
+import { disciplineName } from '../../lib/disciplines'
 import { useMemo, useRef, useState } from 'react'
 import DisciplineFields from '../DisciplineFields'
 import { useAuth } from '../../auth/AuthProvider'
@@ -78,7 +79,7 @@ function SessionFields({ value, onChange, disciplines, weekdays = false }) {
             <option value="">Sin disciplina</option>
             {disciplines.map((d) => (
               <option key={d.id} value={d.code}>
-                {d.name}
+                {disciplineName(d)}
               </option>
             ))}
           </select>

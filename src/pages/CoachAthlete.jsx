@@ -153,7 +153,7 @@ export default function CoachAthlete() {
           ['plan', 'Plan y sesiones'],
           ['calendario', 'Calendario'],
           ['zonas', 'Zonas de FC'],
-          ['objetivos', 'Objetivos!'],
+          ['objetivos', 'Objetivos'],
           ['tests', 'Test y marcas'],
           ['chat', 'Chat'],
         ].map(([id, label]) => (

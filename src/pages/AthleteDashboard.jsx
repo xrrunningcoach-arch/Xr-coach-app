@@ -42,7 +42,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  // Al entrar en «Objetivos!» se refrescan los datos: así se ven al instante
+  // Al entrar en «Objetivos» se refrescan los datos: así se ven al instante
   // las metas que se acaban de editar en «Mi perfil».
   useEffect(() => {
     if (section === 'objetivos') loadData(true)

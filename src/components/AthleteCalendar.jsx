@@ -6,7 +6,7 @@ import CalendarToolbar from './calendar/CalendarToolbar'
 import MonthGrid from './calendar/MonthGrid'
 import SessionChip from './calendar/SessionChip'
 import useToday from './calendar/useToday'
-import { findDiscipline } from '../lib/disciplines'
+import { disciplineName, findDiscipline } from '../lib/disciplines'
 import { disciplineColor } from '../lib/disciplineColors'
 import { weeklyLoad } from '../lib/load'
 import { sessionKm } from '../lib/stats'
@@ -329,7 +329,7 @@ export default function AthleteCalendar({
           {usedDisciplines.map((d) => (
             <li key={d.id} className="flex items-center gap-1.5 font-mono text-[11px] text-slate">
               <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: disciplineColor(d, disciplines) }} aria-hidden="true" />
-              {d.name}
+              {disciplineName(d)}
             </li>
           ))}
         </ul>

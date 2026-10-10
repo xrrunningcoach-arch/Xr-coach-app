@@ -19,7 +19,7 @@ function countdown(dateISO, today) {
   return { big: String(-d), small: tr('goals.daysSince', { count: -d }) }
 }
 
-// Sección «Objetivos!»: las metas del atleta. Reúne la prueba objetivo del
+// Sección «Objetivos»: las metas del atleta. Reúne la prueba objetivo del
 // plan, los objetivos de su perfil y los hitos que fija el entrenador (lo que
 // antes era la pestaña «Calendario»).
 export default function GoalsView({ plan, race, milestones, athleteProfile, today, onGoToProfile }) {

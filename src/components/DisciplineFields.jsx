@@ -3,6 +3,7 @@
 // antemano qué deportes existen: añadir "Pádel" o "Esquí de fondo" en la
 // tabla `disciplines` es suficiente para que aparezca aquí sin tocar código.
 import { useT } from '../i18n'
+import { fieldLabel } from '../lib/disciplines'
 
 export default function DisciplineFields({ discipline, values, onChange, readOnly = false }) {
   const t = useT()
@@ -23,7 +24,7 @@ export default function DisciplineFields({ discipline, values, onChange, readOnl
     if (withValue.length === 0) return null
     return (
       <p className="font-mono text-xs text-navy-light">
-        {withValue.map((f) => `${f.label}: ${values[f.key]}`).join(' · ')}
+        {withValue.map((f) => `${fieldLabel(f)}: ${values[f.key]}`).join(' · ')}
       </p>
     )
   }
@@ -32,7 +33,7 @@ export default function DisciplineFields({ discipline, values, onChange, readOnl
     <div className="grid sm:grid-cols-2 gap-3">
       {fields.map((f) => (
         <div key={f.key}>
-          <label className="block font-mono text-xs text-slate mb-1">{f.label}</label>
+          <label className="block font-mono text-xs text-slate mb-1">{fieldLabel(f)}</label>
           <input
             type={f.type === 'number' ? 'number' : 'text'}
             value={values?.[f.key] ?? ''}

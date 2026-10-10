@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
 import { SESSION_TYPES_SUGGESTED } from '../lib/planGenerator'
 import { toSafeHref } from '../lib/safeUrl'
-import { findDiscipline } from '../lib/disciplines'
+import { disciplineName, findDiscipline } from '../lib/disciplines'
 import { placementFor } from '../lib/dates'
 import { cycleForDate } from '../lib/cycles'
 import StatusBadge from './StatusBadge'
@@ -101,7 +101,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
         >
           <option value="">Disciplina…</option>
           {disciplines.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
+            <option key={d.id} value={d.id}>{disciplineName(d)}</option>
           ))}
         </select>
         <input

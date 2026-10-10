@@ -1,3 +1,4 @@
+import { disciplineName } from '../lib/disciplines'
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
@@ -55,7 +56,7 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
             <span className="font-mono text-xs text-slate">{t('common.day', { n: session.day_number })}</span>
             {discipline && (
               <span className="font-mono text-[11px] uppercase text-navy-light border border-mist rounded-full px-2 py-0.5">
-                {discipline.name}
+                {disciplineName(discipline)}
               </span>
             )}
             <StatusBadge status={session.status} />
@@ -184,7 +185,7 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
 
           {discipline && (
             <div>
-              <p className="font-mono text-xs text-slate mb-1">{t('card.discData', { name: discipline.name })}</p>
+              <p className="font-mono text-xs text-slate mb-1">{t('card.discData', { name: disciplineName(discipline) })}</p>
               <DisciplineFields discipline={discipline} values={metrics} onChange={setMetrics} />
             </div>
           )}
