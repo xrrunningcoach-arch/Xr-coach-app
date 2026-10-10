@@ -5,10 +5,10 @@
 export const LEGAL_VERSION = '2026-10-09'
 
 export const CONTROLLER = {
-  name: 'COMPLETAR: nombre o razón social del titular',
-  taxId: 'COMPLETAR: NIF/CIF',
-  address: 'COMPLETAR: dirección postal',
-  email: 'COMPLETAR: correo de contacto y de ejercicio de derechos',
+  name: 'Xabat Elortza Rubio',
+  taxId: '72837755K',
+  address: 'Arrantzale Kalea 8, 20810 Orio',
+  email: 'xr.running.coach@gmail.com',
 }
 
 const S = (title, ...paras) => ({ title, paras })
