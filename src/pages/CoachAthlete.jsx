@@ -17,7 +17,7 @@ import { dateForWeekday, todayISO } from '../lib/dates'
 import { cycleDatesFromWeeks } from '../lib/cycles'
 import { fetchExercisesBySession } from '../lib/templatesApi'
 import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../lib/templates'
-import { effectiveMaxHr, pickMaxHr, sanitizeManualZones, zonesFromThresholds } from '../lib/zones'
+import { effectiveMaxHr, pickMaxHr, sanitizeManualZones } from '../lib/zones'
 import PlanActions from '../components/PlanActions'
 import ThresholdTestForm from '../components/ThresholdTestForm'
 import HrZonesManual from '../components/HrZonesManual'
@@ -616,7 +616,6 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
 
   // Los números de la tabla se recalculan al escribir, sin esperar a guardar.
   const latest = thresholdTests[0] || null
-  const testZones = latest ? zonesFromThresholds({ vt1Hr: latest.vt1_hr, vt2Hr: latest.vt2_hr, maxHr: latest.max_hr }) : {}
   const used = effectiveMaxHr({ maxHrReal: pickMaxHr(latest?.max_hr, maxHr), age })
 
   async function handleSave(e) {
@@ -636,7 +635,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
   return (
     <div className="space-y-6">
       <form onSubmit={handleSave} className="bg-surface border border-mist rounded-sm p-6 space-y-4 max-w-2xl">
-        <h2 className="font-display text-xl text-navy">Datos base (rellenar con test de campo real)</h2>
+        <h2 className="font-display text-xl text-navy">Datos base (solo como referencia para el %)</h2>
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
             <label className="block font-mono text-xs text-slate mb-1.5">Edad</label>
@@ -660,7 +659,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
             FC máxima usada en las zonas:{' '}
             <span className="font-mono text-navy">{used.value ? `${used.value} ppm (${used.source})` : '—'}</span>
           </p>
-          <p className="text-xs">Si no tienes FC máxima real, se usa la estimada (220 - edad) en los cálculos.</p>
+          <p className="text-xs">Se usa solo para mostrar a qué % de la FC máx. equivale cada zona que escribas. Las zonas no se calculan solas.</p>
         </div>
         <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
           {saving ? 'Guardando…' : 'Guardar zonas'}
@@ -671,7 +670,6 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
         key={JSON.stringify(manualZones)}
         athleteId={athleteId}
         coachId={coachId}
-        maxHr={used.value}
         manualZones={manualZones}
         onPreview={setPreviewManual}
         onSaved={onSaved}
@@ -679,7 +677,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
 
       <ThresholdTestForm athleteId={athleteId} coachId={coachId} today={today} history={thresholdTests} onSaved={onSaved} />
 
-      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} testZones={testZones} />
+      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} />
     </div>
   )
 }

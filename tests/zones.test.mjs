@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  effectiveMaxHr, zoneRange, HR_ZONES, sanitizeManualZones, resolveZones, parseManualForm, manualZoneWarnings,
+  effectiveMaxHr, HR_ZONES, sanitizeManualZones, resolveZones, parseManualForm, manualZoneWarnings,
 } from '../src/lib/zones.js'
 
 test('FC máxima: real > estimada (220 - edad)', () => {
@@ -11,17 +11,14 @@ test('FC máxima: real > estimada (220 - edad)', () => {
   assert.equal(effectiveMaxHr({}).value, null)
 })
 
-test('rango por zona', () => {
-  assert.deepEqual(zoneRange(200, HR_ZONES[0]), [100, 120])
-  assert.equal(zoneRange(null, HR_ZONES[0]), null)
-})
-
-test('las zonas manuales tienen prioridad y el resto sigue automático', () => {
+test('solo existen las zonas escritas por el entrenador; no hay cálculo automático', () => {
   const z = resolveZones({ maxHr: 200, manualZones: { Z2: { lo: 125, hi: 140 } } })
   assert.equal(z[1].source, 'manual')
   assert.deepEqual(z[1].range, [125, 140])
-  assert.equal(z[0].source, 'auto')
-  assert.deepEqual(z[0].range, [100, 120])
+  assert.equal(z[1].pctLabel, '63% - 70%')
+  assert.equal(z[0].source, 'empty')
+  assert.equal(z[0].range, null)
+  assert.ok(resolveZones({ maxHr: 200 }).every((x) => x.range === null))
 })
 
 test('sanitizeManualZones descarta datos corruptos', () => {
@@ -47,27 +44,8 @@ test('avisos de solape y desorden', () => {
   assert.equal(manualZoneWarnings({ Z1: { lo: 100, hi: 120 }, Z2: { lo: 90, hi: 95 } }).length, 1)
 })
 
-import { zonesFromThresholds, pickMaxHr } from '../src/lib/zones.js'
+import { pickMaxHr } from '../src/lib/zones.js'
 import { hrvTrend } from '../src/lib/hrv.js'
-
-test('zonas derivadas del test de umbrales (VT1/VT2)', () => {
-  const z = zonesFromThresholds({ vt1Hr: 150, vt2Hr: 170, maxHr: 188 })
-  assert.deepEqual(z.Z2, { lo: 135, hi: 150 })
-  assert.deepEqual(z.Z3, { lo: 150, hi: 160 })
-  assert.deepEqual(z.Z4, { lo: 160, hi: 170 })
-  assert.deepEqual(z.Z5, { lo: 170, hi: 188 })
-  assert.deepEqual(sanitizeManualZones(z), z)
-  assert.deepEqual(zonesFromThresholds({ vt1Hr: 170, vt2Hr: 150 }), {})
-  assert.deepEqual(zonesFromThresholds({}), {})
-})
-
-test('prioridad: manual > test > % FC máx', () => {
-  const testZones = zonesFromThresholds({ vt1Hr: 150, vt2Hr: 170, maxHr: 188 })
-  const z = resolveZones({ maxHr: 188, manualZones: { Z4: { lo: 158, hi: 168 } }, testZones })
-  assert.equal(z[3].source, 'manual')
-  assert.equal(z[2].source, 'test')
-  assert.equal(resolveZones({ maxHr: 188 })[3].source, 'auto')
-})
 
 test('pickMaxHr toma la primera FC máx válida', () => {
   assert.equal(pickMaxHr(null, '', 190, 200), 190)

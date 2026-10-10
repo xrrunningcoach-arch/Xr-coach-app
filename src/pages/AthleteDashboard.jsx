@@ -11,7 +11,7 @@ import TodayView from '../components/TodayView'
 import { useT } from '../i18n'
 import useToday from '../components/calendar/useToday'
 import { sessionKm, sessionKmDone } from '../lib/stats'
-import { effectiveMaxHr, pickMaxHr, sanitizeManualZones, zonesFromThresholds } from '../lib/zones'
+import { effectiveMaxHr, pickMaxHr, sanitizeManualZones } from '../lib/zones'
 import ThresholdsPanel from '../components/ThresholdsPanel'
 
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
@@ -227,13 +227,11 @@ function Stat({ label, value }) {
 
 function HrZonesView({ hrZones, manualZones, test }) {
   const t = useT()
-  const testZones = test ? zonesFromThresholds({ vt1Hr: test.vt1_hr, vt2Hr: test.vt2_hr, maxHr: test.max_hr }) : {}
-  const hasManual = Object.keys(manualZones).length > 0 || Object.keys(testZones).length > 0
-  if (!hrZones && !hasManual) return <EmptyState text={t('zones.empty')} />
+  if (Object.keys(manualZones).length === 0) return <EmptyState text={t('zones.empty')} />
   // Una sola FC máx.: la del test de umbrales más reciente manda sobre la del plan.
   const testMax = pickMaxHr(test?.max_hr)
   const used = effectiveMaxHr({ maxHrReal: testMax ?? hrZones?.max_hr_real, age: hrZones?.age })
-  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} testZones={testZones} />
+  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} />
 }
 
 function TestsView({ tests }) {

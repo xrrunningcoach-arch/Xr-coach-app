@@ -9,7 +9,7 @@ const toSec = (v) => {
 }
 
 // Entrenador: registra un test de umbrales de un atleta. Las zonas del atleta
-// se derivan del test más reciente (ver zonesFromThresholds).
+// son solo informativos: las zonas de FC las escribe el entrenador.
 export default function ThresholdTestForm({ athleteId, coachId, today, history, onSaved }) {
   const t = useT()
   const [f, setF] = useState({ test_date: today, test_type: 'campo', vt1_hr: '', vt2_hr: '', vt1_pace: '', vt2_pace: '', vam: '', lactate: '', max_hr: '', notes: '' })

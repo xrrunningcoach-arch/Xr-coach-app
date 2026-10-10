@@ -1,11 +1,11 @@
-// Zonas de entrenamiento por % de la FC máxima — igual que la hoja
-// "Zonas de Entrenamiento" del Excel (códigos Z1 a Z5).
+// Zonas de FC (Z1 a Z5). Los rangos en ppm los escribe SIEMPRE el entrenador,
+// desde su criterio: la app no calcula ni deriva zonas automáticamente.
 export const HR_ZONES = [
-  { code: 'Z1', lo: 0.5, hi: 0.6, rpe: 'RPE 1 - 3' },
-  { code: 'Z2', lo: 0.6, hi: 0.7, rpe: 'RPE 4 - 5' },
-  { code: 'Z3', lo: 0.7, hi: 0.8, rpe: 'RPE 6 - 7' },
-  { code: 'Z4', lo: 0.8, hi: 0.9, rpe: 'RPE 8 - 8.5' },
-  { code: 'Z5', lo: 0.9, hi: 1.0, rpe: 'RPE 9 - 10' },
+  { code: 'Z1', rpe: 'RPE 1 - 3' },
+  { code: 'Z2', rpe: 'RPE 4 - 5' },
+  { code: 'Z3', rpe: 'RPE 6 - 7' },
+  { code: 'Z4', rpe: 'RPE 8 - 8.5' },
+  { code: 'Z5', rpe: 'RPE 9 - 10' },
 ]
 
 // FC máxima que se usa para calcular las zonas: la real (test de campo) si
@@ -30,37 +30,10 @@ export function pickMaxHr(...candidates) {
   return null
 }
 
-// Zonas ancladas a un test de umbrales (formato igual al de las manuales).
-//   Z1: hasta el 90 % de VT1 · Z2: 90 % VT1 → VT1 · Z3: VT1 → punto medio
-//   Z4: punto medio → VT2 (zona de umbral) · Z5: VT2 → FC máx.
-// Necesita VT1 y VT2 (ppm). Devuelve {} si faltan o son incoherentes.
-export function zonesFromThresholds({ vt1Hr, vt2Hr, maxHr }) {
-  const vt1 = Number(vt1Hr)
-  const vt2 = Number(vt2Hr)
-  if (!Number.isFinite(vt1) || !Number.isFinite(vt2) || vt1 < MANUAL_MIN_BPM || vt2 > MANUAL_MAX_BPM || vt1 >= vt2) return {}
-  const max = Number(maxHr) > vt2 ? Number(maxHr) : Math.round(vt2 * 1.06)
-  const lowEdge = Math.round(vt1 * 0.9)
-  const mid = Math.round((vt1 + vt2) / 2)
-  const floor = Math.max(MANUAL_MIN_BPM, Math.round(vt1 * 0.7))
-  return {
-    Z1: { lo: floor, hi: lowEdge },
-    Z2: { lo: lowEdge, hi: Math.round(vt1) },
-    Z3: { lo: Math.round(vt1), hi: mid },
-    Z4: { lo: mid, hi: Math.round(vt2) },
-    Z5: { lo: Math.round(vt2), hi: Math.min(MANUAL_MAX_BPM, Math.round(max)) },
-  }
-}
-
-export function zoneRange(maxHr, zone) {
-  if (!maxHr) return null
-  return [Math.round(maxHr * zone.lo), Math.round(maxHr * zone.hi)]
-}
-
 // ---------------------------------------------------------------------------
 // Zonas manuales del entrenador (tabla athlete_hr_zones, migración 0004).
 // manualZones = { Z1: { lo: 110, hi: 125 }, Z3: { lo: 140, hi: 155 } }
-// Cada zona fijada a mano TIENE PRIORIDAD sobre el cálculo por % de FC máxima;
-// las zonas que el entrenador no toca siguen calculándose automáticamente.
+// Solo existen las zonas que el entrenador ha escrito; las demás quedan sin definir.
 // ---------------------------------------------------------------------------
 
 export const MANUAL_MIN_BPM = 30
@@ -81,28 +54,15 @@ export function sanitizeManualZones(raw) {
   return out
 }
 
-// Zonas finales que se muestran: manual si existe, si no automática.
-export function resolveZones({ maxHr, manualZones, testZones }) {
+// Zonas que se muestran: solo las escritas por el entrenador. `maxHr` es
+// opcional y solo sirve para indicar a qué % de la FC máx. equivale cada rango.
+export function resolveZones({ maxHr, manualZones }) {
   const manual = sanitizeManualZones(manualZones)
-  const fromTest = sanitizeManualZones(testZones)
   return HR_ZONES.map((z) => {
-    const auto = zoneRange(maxHr, z)
-    const m = manual[z.code] || fromTest[z.code]
-    const fixed = manual[z.code] ? 'manual' : fromTest[z.code] ? 'test' : 'auto'
-    const range = m ? [m.lo, m.hi] : auto
-    const pct = range && maxHr ? [Math.round((range[0] / maxHr) * 100), Math.round((range[1] / maxHr) * 100)] : null
-    return {
-      ...z,
-      auto,
-      range,
-      source: fixed,
-      // % real que representa el rango usado (si hay FC máx); si no, el teórico de la zona.
-      pctLabel: m
-        ? pct
-          ? `${pct[0]}% - ${pct[1]}%`
-          : '—'
-        : `${Math.round(z.lo * 100)}% - ${Math.round(z.hi * 100)}%`,
-    }
+    const m = manual[z.code]
+    const range = m ? [m.lo, m.hi] : null
+    const pct = range && maxHr ? `${Math.round((range[0] / maxHr) * 100)}% - ${Math.round((range[1] / maxHr) * 100)}%` : '—'
+    return { ...z, range, source: m ? 'manual' : 'empty', pctLabel: pct }
   })
 }
 
@@ -117,7 +77,7 @@ export function parseManualForm(fields) {
     const hiRaw = String(fields?.[z.code]?.hi ?? '').trim()
     if (loRaw === '' && hiRaw === '') return
     if (loRaw === '' || hiRaw === '') {
-      errors[z.code] = 'Rellena el mínimo y el máximo, o deja los dos vacíos para usar el cálculo automático.'
+      errors[z.code] = 'Rellena el mínimo y el máximo, o deja los dos vacíos para dejar la zona sin definir.'
       return
     }
     const lo = Number(loRaw)
