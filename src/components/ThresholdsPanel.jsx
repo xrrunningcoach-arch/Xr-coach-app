@@ -45,8 +45,8 @@ export default function ThresholdsPanel({ test, hrv, athleteId, today, onChanged
           <>
             <p className="font-mono text-xs text-slate">{t('thr.dated', { date: test.test_date, type: t('thr.type.' + test.test_type) })}</p>
             <div className="grid grid-cols-2 gap-3">
-              {row('VT1', test.vt1_hr ? `${test.vt1_hr} ppm · ${fmtPace(test.vt1_pace_s_km)}` : null)}
-              {row('VT2', test.vt2_hr ? `${test.vt2_hr} ppm · ${fmtPace(test.vt2_pace_s_km)}` : null)}
+              {row('VT1', test.vt1_hr ? `${test.vt1_hr} ${t('unit.bpm')} · ${fmtPace(test.vt1_pace_s_km)}` : null)}
+              {row('VT2', test.vt2_hr ? `${test.vt2_hr} ${t('unit.bpm')} · ${fmtPace(test.vt2_pace_s_km)}` : null)}
               {row('vAM', test.vam_kmh ? `${test.vam_kmh} km/h` : null)}
               {row(t('thr.lactate'), test.lactate_threshold_mmol ? `${test.lactate_threshold_mmol} mmol/l` : null)}
             </div>

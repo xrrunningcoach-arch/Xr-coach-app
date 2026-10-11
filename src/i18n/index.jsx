@@ -20,11 +20,11 @@ function readLang() {
   } catch {
     /* sin almacenamiento */
   }
-  const nav = (typeof navigator !== 'undefined' && navigator.language) || 'es'
-  return nav.toLowerCase().startsWith('eu') ? 'eu' : 'es'
+  // Euskera por defecto; el castellano se elige con el botón ES/EU y se recuerda.
+  return 'eu'
 }
 
-let current = typeof window === 'undefined' ? 'es' : readLang()
+let current = typeof window === 'undefined' ? 'eu' : readLang()
 setDateLang(current)
 
 function interpolate(text, params) {

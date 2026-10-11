@@ -55,8 +55,8 @@ export default function ThresholdTestForm({ athleteId, coachId, today, history, 
             {['campo', 'laboratorio', 'rampa', 'lactato'].map((k) => <option key={k} value={k}>{t('thr.type.' + k)}</option>)}
           </select>
         </L>
-        <L label="VT1 (ppm)"><input type="number" min={30} max={250} value={f.vt1_hr} onChange={(e) => set('vt1_hr', e.target.value)} className={input} /></L>
-        <L label="VT2 (ppm)"><input type="number" min={30} max={250} value={f.vt2_hr} onChange={(e) => set('vt2_hr', e.target.value)} className={input} /></L>
+        <L label={`VT1 (${t('unit.bpm')})`}><input type="number" min={30} max={250} value={f.vt1_hr} onChange={(e) => set('vt1_hr', e.target.value)} className={input} /></L>
+        <L label={`VT2 (${t('unit.bpm')})`}><input type="number" min={30} max={250} value={f.vt2_hr} onChange={(e) => set('vt2_hr', e.target.value)} className={input} /></L>
         <L label={t('thr.vt1Pace')}><input placeholder="5:10" value={f.vt1_pace} onChange={(e) => set('vt1_pace', e.target.value)} className={input} /></L>
         <L label={t('thr.vt2Pace')}><input placeholder="4:25" value={f.vt2_pace} onChange={(e) => set('vt2_pace', e.target.value)} className={input} /></L>
         <L label="vAM (km/h)"><input type="number" step="0.1" min={5} max={40} value={f.vam} onChange={(e) => set('vam', e.target.value)} className={input} /></L>

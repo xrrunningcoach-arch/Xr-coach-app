@@ -7,6 +7,7 @@ import { disciplineName, findDiscipline } from '../lib/disciplines'
 import { placementFor } from '../lib/dates'
 import { cycleForDate } from '../lib/cycles'
 import StatusBadge from './StatusBadge'
+import CoachStatusControl from './CoachStatusControl'
 import DisciplineFields from './DisciplineFields'
 import StrengthExercises from './StrengthExercises'
 import { ui } from '../ui/ui'
@@ -194,6 +195,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
 
       <div className="mt-2 flex flex-wrap items-center gap-3 pl-0 sm:pl-[calc(8.3%)]">
         <StatusBadge status={session.status} />
+        <CoachStatusControl session={session} onChanged={onChanged} />
         {session.rpe_actual && <span className="text-xs font-mono text-slate">RPE real: {session.rpe_actual}</span>}
         {toSafeHref(session.link_url) && (
           <a href={toSafeHref(session.link_url)} target="_blank" rel="noreferrer" className="text-xs text-navy underline underline-offset-2">

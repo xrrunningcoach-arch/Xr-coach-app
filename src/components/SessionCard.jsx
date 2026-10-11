@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
 import DisciplineFields from './DisciplineFields'
+import RpeSelector from './RpeSelector'
+import { buildSubmitParams } from '../lib/sessionLog'
 import { useT } from '../i18n'
 import { ui } from '../ui/ui'
 import ExerciseList from './ExerciseList'
@@ -14,36 +16,23 @@ import { formatPace } from '../lib/stats'
 export default function SessionRow({ session, discipline, evaluations, onUpdated }) {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState(session.status)
-  const [rpeActual, setRpeActual] = useState(session.rpe_actual || '')
-  const [rpeValue, setRpeValue] = useState(session.rpe_actual_value ?? '')
-  const [durationActual, setDurationActual] = useState(session.duration_actual_min ?? '')
+  const [rpe, setRpe] = useState(session.rpe_actual_value ?? '')
   const [notes, setNotes] = useState(session.athlete_notes || '')
   const [link, setLink] = useState(session.link_url || '')
-  const [distance, setDistance] = useState(session.distance_actual_km ?? '')
-  const [avgHr, setAvgHr] = useState(session.avg_hr_actual ?? '')
-  const [metrics, setMetrics] = useState(session.metrics_actual || {})
   const [saving, setSaving] = useState(false)
 
-  async function handleSave() {
+  // Guardar el registro = sesión completada (sin tocar ningún estado).
+  // «No pude hacerla» la marca como saltada.
+  async function submit(status) {
+    if (status === 'saltado' && !(await ui.confirm(t('log.confirmSkip'), { confirmLabel: t('log.skip') }))) return
     setSaving(true)
-    const { error } = await supabase.rpc('submit_session', {
-      p_session_id: session.id,
-      p_status: status,
-      p_rpe_actual: rpeActual,
-      p_notes: notes,
-      p_link_url: link,
-      p_duration_actual_min: durationActual === '' ? null : Number(durationActual),
-      p_rpe_actual_value: rpeValue === '' ? null : Number(rpeValue),
-      p_metrics: metrics,
-      p_distance_actual_km: distance === '' ? null : Number(distance),
-      p_avg_hr_actual: avgHr === '' ? null : Number(avgHr),
-    })
+    const { error } = await supabase.rpc('submit_session', buildSubmitParams(session, { status, rpe, notes, link }))
     setSaving(false)
     if (error) {
       ui.error(t('card.saveError', { msg: error.message }))
       return
     }
+    ui.success(status === 'completado' ? t('log.saved') : t('log.skippedMsg'))
     setOpen(false)
     onUpdated()
   }
@@ -103,92 +92,19 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
       )}
 
       {open && (
-        <div className="mt-4 bg-bg-dim rounded-sm p-4 space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('card.status')}</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              >
-                <option value="pendiente">{t('status.pending')}</option>
-                <option value="completado">{t('status.done')}</option>
-                <option value="saltado">{t('status.skipped')}</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('card.rpeNote')}</label>
-              <input
-                value={rpeActual}
-                onChange={(e) => setRpeActual(e.target.value)}
-                placeholder={t('card.rpePlaceholder')}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              />
-            </div>
-          </div>
+        <div className="mt-4 bg-bg-dim rounded-sm p-4 space-y-4">
+          <RpeSelector value={rpe} onChange={setRpe} />
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('log.duration')}</label>
-              <input
-                type="number"
-                min={0}
-                max={720}
-                value={durationActual}
-                onChange={(e) => setDurationActual(e.target.value)}
-                placeholder="Ej. 55"
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              />
-            </div>
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('card.rpeLoad')}</label>
-              <select
-                value={rpeValue}
-                onChange={(e) => setRpeValue(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              >
-                <option value="">{t('card.unrated')}</option>
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block font-mono text-xs text-slate mb-1">{t('card.link')}</label>
+            <input
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://..."
+              inputMode="url"
+              className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
+            />
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('card.distanceActual')}</label>
-              <input
-                type="number"
-                min={0}
-                max={500}
-                step="0.01"
-                value={distance}
-                onChange={(e) => setDistance(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              />
-            </div>
-            <div>
-              <label className="block font-mono text-xs text-slate mb-1">{t('card.avgHrActual')}</label>
-              <input
-                type="number"
-                min={30}
-                max={240}
-                step="1"
-                value={avgHr}
-                onChange={(e) => setAvgHr(e.target.value)}
-                className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-              />
-            </div>
-          </div>
-
-          {discipline && (
-            <div>
-              <p className="font-mono text-xs text-slate mb-1">{t('card.discData', { name: disciplineName(discipline) })}</p>
-              <DisciplineFields discipline={discipline} values={metrics} onChange={setMetrics} />
-            </div>
-          )}
 
           <div>
             <label className="block font-mono text-xs text-slate mb-1">{t('card.notes')}</label>
@@ -196,25 +112,29 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              maxLength={2000}
               className="w-full border border-mist rounded-sm px-3 py-2 bg-surface resize-none"
             />
           </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1">{t('card.link')}</label>
-            <input
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              placeholder="https://..."
-              className="w-full border border-mist rounded-sm px-3 py-2 bg-surface"
-            />
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => submit('completado')}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
+            >
+              {saving ? t('common.saving') : t('card.saveBtn')}
+            </button>
+            <button
+              type="button"
+              onClick={() => submit('saltado')}
+              disabled={saving}
+              className="px-4 py-2.5 text-sm text-slate border border-mist rounded-sm hover:text-navy hover:border-navy-light disabled:opacity-60"
+            >
+              {t('log.skip')}
+            </button>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
-          >
-            {saving ? t('common.saving') : t('card.saveBtn')}
-          </button>
         </div>
       )}
     </div>

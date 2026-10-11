@@ -75,8 +75,8 @@ export default function HrZonesManual({ athleteId, coachId, manualZones, onPrevi
           <thead>
             <tr className="text-left">
               <th className="px-4 py-3 font-mono text-xs text-slate">Zona</th>
-              <th className="px-4 py-3 font-mono text-xs text-slate">Mínimo (ppm)</th>
-              <th className="px-4 py-3 font-mono text-xs text-slate">Máximo (ppm)</th>
+              <th className="px-4 py-3 font-mono text-xs text-slate">{`Mínimo (${t('unit.bpm')})`}</th>
+              <th className="px-4 py-3 font-mono text-xs text-slate">{`Máximo (${t('unit.bpm')})`}</th>
               <th className="px-4 py-3 font-mono text-xs text-slate">Estado</th>
             </tr>
           </thead>
@@ -97,7 +97,7 @@ export default function HrZonesManual({ athleteId, coachId, manualZones, onPrevi
                       max={250}
                       value={fields[z.code].lo}
                       onChange={(e) => setField(z.code, 'lo', e.target.value)}
-                      aria-label={`${z.code} mínimo manual (ppm)`}
+                      aria-label={`${z.code} mínimo manual (${t('unit.bpm')})`}
                       aria-invalid={!!errors[z.code]}
                       className={inputCls}
                     />
@@ -110,7 +110,7 @@ export default function HrZonesManual({ athleteId, coachId, manualZones, onPrevi
                       max={250}
                       value={fields[z.code].hi}
                       onChange={(e) => setField(z.code, 'hi', e.target.value)}
-                      aria-label={`${z.code} máximo manual (ppm)`}
+                      aria-label={`${z.code} máximo manual (${t('unit.bpm')})`}
                       aria-invalid={!!errors[z.code]}
                       className={inputCls}
                     />

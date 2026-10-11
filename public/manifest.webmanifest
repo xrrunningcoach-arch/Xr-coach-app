@@ -1,13 +1,13 @@
 {
   "name": "XR Running Coach",
   "short_name": "XR Coach",
-  "description": "Tu plan de entrenamiento de running, siempre a mano.",
+  "description": "Zure entrenamendu-plana, beti eskura.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#08130f",
   "theme_color": "#08130f",
-  "lang": "es",
+  "lang": "eu",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

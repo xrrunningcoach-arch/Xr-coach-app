@@ -7,41 +7,24 @@ import { sessionKm, sessionKmDone } from '../lib/stats'
 import { disciplineColor } from '../lib/disciplineColors'
 import { disciplineName, findDiscipline } from '../lib/disciplines'
 import SessionCard from './SessionCard'
+import RpeSelector from './RpeSelector'
+import { buildSubmitParams } from '../lib/sessionLog'
 import StatusBadge from './StatusBadge'
 import { IconCheck } from './icons'
 
-const RPE_GROUPS = [
-  { from: 0, to: 3, key: 'log.easy' },
-  { from: 4, to: 5, key: 'log.moderate' },
-  { from: 6, to: 7, key: 'log.hard' },
-  { from: 8, to: 9, key: 'log.veryHard' },
-  { from: 10, to: 10, key: 'log.max' },
-]
-const rpeWord = (n) => RPE_GROUPS.find((g) => n >= g.from && n <= g.to).key
-
-// Registro en 3 toques: esfuerzo (0-10) + duración + «completada».
+// Registro en 3 toques: esfuerzo (0-10) + enlace + notas, y «completada».
 // Usa el mismo RPC (submit_session) que la tarjeta completa.
 function QuickLog({ session, onSaved }) {
   const t = useT()
-  const [rpe, setRpe] = useState('')
-  const [minutes, setMinutes] = useState(session.duration_planned_min ?? '')
+  const [rpe, setRpe] = useState(session.rpe_actual_value ?? '')
+  const [link, setLink] = useState(session.link_url || '')
+  const [notes, setNotes] = useState(session.athlete_notes || '')
   const [saving, setSaving] = useState(false)
 
   async function submit(status) {
     if (status === 'saltado' && !(await ui.confirm(t('log.confirmSkip'), { confirmLabel: t('log.skip') }))) return
     setSaving(true)
-    const { error } = await supabase.rpc('submit_session', {
-      p_session_id: session.id,
-      p_status: status,
-      p_rpe_actual: status === 'completado' && rpe !== '' ? `RPE ${rpe}` : '',
-      p_notes: session.athlete_notes || '',
-      p_link_url: session.link_url || '',
-      p_duration_actual_min: status === 'completado' && minutes !== '' ? Number(minutes) : null,
-      p_rpe_actual_value: status === 'completado' && rpe !== '' ? Number(rpe) : null,
-      p_metrics: session.metrics_actual || {},
-      p_distance_actual_km: null,
-      p_avg_hr_actual: null,
-    })
+    const { error } = await supabase.rpc('submit_session', buildSubmitParams(session, { status, rpe, notes, link }))
     setSaving(false)
     if (error) {
       ui.error(t('log.error', { msg: error.message }))
@@ -53,38 +36,25 @@ function QuickLog({ session, onSaved }) {
 
   return (
     <div className="mt-4 rounded-lg bg-bg-dim p-4 space-y-4">
-      <div>
-        <p className="font-mono text-[11px] uppercase text-navy-light mb-2">{t('log.rpe')}</p>
-        <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 sm:gap-1" role="radiogroup" aria-label={t('log.rpe')}>
-          {Array.from({ length: 11 }, (_, n) => (
-            <button
-              key={n}
-              type="button"
-              role="radio"
-              aria-checked={String(rpe) === String(n)}
-              onClick={() => setRpe(String(rpe) === String(n) ? '' : n)}
-              className={`h-11 rounded-md text-sm font-mono font-semibold border transition-colors ${
-                String(rpe) === String(n)
-                  ? 'bg-brand border-brand text-white'
-                  : 'bg-surface border-mist text-ink hover:border-navy-light'
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1.5 h-4 text-xs text-slate">{rpe !== '' ? t(rpeWord(Number(rpe))) : ''}</p>
-      </div>
+      <RpeSelector value={rpe} onChange={setRpe} />
       <label className="block">
-        <span className="block font-mono text-[11px] uppercase text-navy-light mb-1">{t('log.duration')}</span>
+        <span className="block font-mono text-[11px] uppercase text-navy-light mb-1">{t('card.link')}</span>
         <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={720}
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="https://..."
+          inputMode="url"
           className="w-full border border-mist rounded-md px-3 py-3 text-base"
+        />
+      </label>
+      <label className="block">
+        <span className="block font-mono text-[11px] uppercase text-navy-light mb-1">{t('card.notes')}</span>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          maxLength={2000}
+          className="w-full border border-mist rounded-md px-3 py-3 text-base resize-none"
         />
       </label>
       <div className="flex flex-col sm:flex-row gap-2">

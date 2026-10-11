@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import SessionCard from './SessionCard'
 import { tr, useT } from '../i18n'
-import WeekLoadBars from './WeekLoadBars'
 import CalendarToolbar from './calendar/CalendarToolbar'
 import MonthGrid from './calendar/MonthGrid'
 import SessionChip from './calendar/SessionChip'
 import useToday from './calendar/useToday'
 import { disciplineName, findDiscipline } from '../lib/disciplines'
 import { disciplineColor } from '../lib/disciplineColors'
-import { weeklyLoad } from '../lib/load'
 import { sessionKm } from '../lib/stats'
 import { cycleForDate } from '../lib/cycles'
 import {
@@ -106,22 +104,6 @@ export default function AthleteCalendar({
     return map
   }, [milestones, plan])
 
-  // Carga (session-RPE) por semana natural, para las mismas barras de siempre.
-  const loadByMonday = useMemo(() => {
-    const groups = new Map()
-    sessions.forEach((s) => {
-      if (!s.session_date) return
-      const key = mondayOf(s.session_date)
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key).push({ ...s, week_number: 0 })
-    })
-    const out = new Map()
-    groups.forEach((list, key) => out.set(key, weeklyLoad(list)[0]))
-    return out
-  }, [sessions])
-  const maxLoad = Math.max(1, ...[...loadByMonday.values()].map((w) => w.load))
-  const maxImpact = Math.max(1, ...[...loadByMonday.values()].map((w) => w.impactLoad))
-
   const usedDisciplines = useMemo(() => {
     const ids = new Set(sessions.map((s) => s.discipline_id).filter(Boolean))
     return disciplines.filter((d) => ids.has(d.id))
@@ -198,7 +180,6 @@ export default function AthleteCalendar({
     const items = days.flatMap((d) => byDate.get(d) || [])
     const done = items.filter((s) => s.status === 'completado').length
     const km = items.reduce((t, s) => t + sessionKm(s), 0)
-    const weekLoad = loadByMonday.get(weekMonday)
     return (
       <div className="bg-surface border border-mist rounded-sm overflow-hidden">
         <div className="bg-bg-dim px-5 py-3 flex flex-wrap items-center justify-between gap-2">
@@ -209,7 +190,6 @@ export default function AthleteCalendar({
             {t('cal.sessionsCount', { done, total: items.length, km: Math.round(km * 10) / 10 })}
           </span>
         </div>
-        <WeekLoadBars weekLoad={weekLoad} maxLoad={maxLoad} maxImpact={maxImpact} />
         {days.map((iso, i) => {
           const list = byDate.get(iso) || []
           const isToday = iso === today

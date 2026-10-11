@@ -1,25 +1,36 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { useT } from '../i18n'
 import BrandMark from './BrandMark'
 import { LangSwitch, ThemeToggle } from './ThemeLangControls'
-
-const navCls = ({ isActive }) =>
-  `px-3 py-1.5 text-sm rounded-md transition-colors ${
-    isActive ? 'bg-bg-dim text-navy font-semibold' : 'text-slate hover:text-navy'
-  }`
+import Sidebar from './Sidebar'
+import { IconLibrary, IconUsers } from './icons'
 
 // wide = true: contenedor más ancho (vista del atleta con panel lateral y
-// Biblioteca del entrenador). En móvil, el atleta tiene barra inferior, por eso
-// el contenido deja hueco abajo (pb-28).
+// Biblioteca del entrenador). En móvil, atletas y entrenadores tienen barra
+// inferior (la del entrenador se genera aquí), por eso el contenido deja hueco
+// abajo (pb-28). En escritorio, el entrenador tiene el mismo panel lateral
+// desplegable que el atleta.
 export default function Layout({ children, wide = false }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const t = useT()
 
   const isCoach = profile?.role === 'coach'
   const home = isCoach ? '/coach' : '/atleta'
   const container = wide ? 'max-w-[1400px]' : 'max-w-6xl'
+
+  const coachGroups = [
+    {
+      title: t('nav.coachSections'),
+      items: [
+        { id: '/coach', label: t('nav.athletes'), icon: IconUsers, primary: true },
+        { id: '/coach/biblioteca', label: t('nav.library'), icon: IconLibrary, primary: true },
+      ],
+    },
+  ]
+  const coachActive = pathname.startsWith('/coach/biblioteca') ? '/coach/biblioteca' : '/coach'
 
   async function handleSignOut() {
     await signOut()
@@ -38,12 +49,6 @@ export default function Layout({ children, wide = false }) {
               <BrandMark showName={false} />
               <span className="hidden sm:inline ml-3 font-display font-bold text-lg text-navy align-middle">Running Coach</span>
             </Link>
-            {isCoach && (
-              <nav aria-label={t('nav.coachSections')} className="hidden sm:flex items-center gap-1">
-                <NavLink to="/coach" end className={navCls}>{t('nav.athletes')}</NavLink>
-                <NavLink to="/coach/biblioteca" className={navCls}>{t('nav.library')}</NavLink>
-              </nav>
-            )}
           </div>
           <div className="flex items-center gap-2 text-sm">
             <LangSwitch />
@@ -66,14 +71,15 @@ export default function Layout({ children, wide = false }) {
             )}
           </div>
         </div>
-        {isCoach && (
-          <nav aria-label={t('nav.coachSections')} className={`sm:hidden ${container} mx-auto px-4 pb-2 flex items-center gap-1`}>
-            <NavLink to="/coach" end className={navCls}>{t('nav.athletes')}</NavLink>
-            <NavLink to="/coach/biblioteca" className={navCls}>{t('nav.library')}</NavLink>
-          </nav>
-        )}
       </header>
-      <main id="main" className={`${container} mx-auto px-4 sm:px-8 pt-6 md:pt-10 pb-28 md:pb-12`}>{children}</main>
+      {isCoach ? (
+        <div className={`${container} mx-auto px-4 sm:px-8 pt-6 md:pt-10 pb-28 md:pb-12 md:flex md:gap-6`}>
+          <Sidebar groups={coachGroups} active={coachActive} onSelect={(path) => navigate(path)} ariaLabel={t('nav.coachSections')} />
+          <main id="main" className="flex-1 min-w-0">{children}</main>
+        </div>
+      ) : (
+        <main id="main" className={`${container} mx-auto px-4 sm:px-8 pt-6 md:pt-10 pb-28 md:pb-12`}>{children}</main>
+      )}
     </div>
   )
 }
