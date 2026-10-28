@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
+import { tr } from '../i18n'
 
 const AuthContext = createContext(null)
 
@@ -30,7 +31,7 @@ export function AuthProvider({ children }) {
       if (error) {
         console.error('Error cargando el perfil:', error.message)
         setProfile(null)
-        setAuthError('No se ha podido cargar tu perfil. Puedes reintentarlo o salir.')
+        setAuthError(tr('pr.loadErrorLong'))
       } else {
         setProfile(data)
         setAuthError(null)

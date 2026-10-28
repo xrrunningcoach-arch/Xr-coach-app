@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useLang } from '../i18n'
-import { ANAMNESIS_QUESTIONS } from '../lib/anamnesis'
+import { ANAMNESIS_QUESTIONS, profileFromAnamnesis } from '../lib/anamnesis'
 
 // Carga las respuestas de un atleta. Devuelve { answers, answeredAt }.
 async function fetchAnamnesis(athleteId) {
@@ -113,11 +113,37 @@ export default function AnamnesisForm({ athleteId, basicProfile, onSaved }) {
       },
       { onConflict: 'athlete_id' }
     )
-    setSaving(false)
     if (err) {
+      setSaving(false)
       setError(err.message)
       return
     }
+
+    // La anamnesis genera el perfil: se rellenan solos los campos correspondientes
+    // de athlete_profiles y el nombre y la edad (solo si han cambiado).
+    const { profile, basic } = profileFromAnamnesis(answers, lang)
+    if (Object.keys(profile).length > 0) {
+      const { error: pErr } = await supabase
+        .from('athlete_profiles')
+        .upsert({ profile_id: athleteId, ...profile, updated_at: now }, { onConflict: 'profile_id' })
+      if (pErr) {
+        setSaving(false)
+        setError(pErr.message)
+        return
+      }
+    }
+    const basicChanges = {}
+    if (basic.full_name && basic.full_name !== basicProfile?.full_name) basicChanges.full_name = basic.full_name
+    if (basic.age && basic.age !== basicProfile?.age) basicChanges.age = basic.age
+    if (Object.keys(basicChanges).length > 0) {
+      const { error: bErr } = await supabase.from('profiles').update(basicChanges).eq('id', athleteId)
+      if (bErr) {
+        setSaving(false)
+        setError(bErr.message)
+        return
+      }
+    }
+    setSaving(false)
     if (!answeredAt) setAnsweredAt(now)
     setSavedAt(new Date())
     if (onSaved) onSaved()

@@ -16,13 +16,16 @@ import { cycleForDate } from './cycles'
 import { addDays, dateForWeekday, isISO, mondayOf, weekNumberFor, weekdayIndex } from './dates'
 
 export const KINDS = [
-  { id: 'session', label: 'Sesión suelta', short: 'Sesión' },
-  { id: 'mesocycle', label: 'Plan / mesociclo', short: 'Mesociclo' },
-  { id: 'macrocycle', label: 'Proyecto / macrociclo', short: 'Macrociclo' },
+  { id: 'session', key: 'tpl.kind.session', label: 'Sesión suelta', short: 'Sesión' },
+  { id: 'mesocycle', key: 'tpl.kind.mesocycle', label: 'Plan / mesociclo', short: 'Mesociclo' },
+  { id: 'macrocycle', key: 'tpl.kind.macrocycle', label: 'Proyecto / macrociclo', short: 'Macrociclo' },
 ]
 
-export function kindLabel(kind) {
-  return KINDS.find((k) => k.id === kind)?.label || kind
+// t = función de traducción (useT); sin ella devuelve el texto en castellano.
+export function kindLabel(kind, t) {
+  const k = KINDS.find((x) => x.id === kind)
+  if (!k) return kind
+  return t ? t(k.key) : k.label
 }
 
 export const MAX_BLOCK_WEEKS = 26
@@ -106,20 +109,20 @@ export function cleanPayload(kind, payload) {
 
 export function validateTemplate(kind, name, payload) {
   const errors = []
-  if (!String(name || '').trim()) errors.push('Ponle un nombre a la plantilla.')
+  if (!String(name || '').trim()) errors.push({ key: 'tpl.err.name' })
   if (kind === 'session') {
     const s = payload?.session
     if (!s || (!String(s.session_type || '').trim() && !String(s.description || '').trim())) {
-      errors.push('Rellena al menos el tipo o la descripción de la sesión.')
+      errors.push({ key: 'tpl.err.sessionContent' })
     }
     return errors
   }
   const blocks = payload?.blocks || []
-  if (blocks.length === 0) errors.push('Añade al menos un bloque.')
-  if (blocks.length > MAX_BLOCKS) errors.push(`Máximo ${MAX_BLOCKS} bloques.`)
-  if (blocks.every((b) => (b.sessions || []).length === 0)) errors.push('Añade al menos una sesión.')
+  if (blocks.length === 0) errors.push({ key: 'tpl.err.noBlock' })
+  if (blocks.length > MAX_BLOCKS) errors.push({ key: 'tpl.err.maxBlocks', params: { max: MAX_BLOCKS } })
+  if (blocks.every((b) => (b.sessions || []).length === 0)) errors.push({ key: 'tpl.err.noSessions' })
   const blank = blocks.flatMap((b) => b.sessions || []).filter((s) => !String(s.session_type || '').trim() && !String(s.description || '').trim()).length
-  if (blank > 0) errors.push(`${blank === 1 ? 'Hay 1 sesión sin tipo ni descripción' : `Hay ${blank} sesiones sin tipo ni descripción`}: rellénala o elimínala.`)
+  if (blank > 0) errors.push({ key: 'tpl.err.blank', params: { count: blank } })
   return errors
 }
 
@@ -233,7 +236,7 @@ function sessionRow(tpl, date, planStart, disciplines, extra = {}) {
 export function buildApplication({ item, startDate, plan, existing, disciplines, macroChoice = 'auto', _shifted = false }) {
   const result = { errors: [], warnings: [], planStart: null, newPlanStart: false }
   if (!isISO(startDate)) {
-    result.errors.push('Elige una fecha de inicio.')
+    result.errors.push({ key: 'tpl.err.noStart' })
     return result
   }
 
@@ -330,11 +333,9 @@ export function buildApplication({ item, startDate, plan, existing, disciplines,
         return again
       }
     }
-    result.errors.push(
-      `Alguna sesión caería antes del inicio del plan (${planStart}). Elige una fecha de inicio igual o posterior.`
-    )
+    result.errors.push({ key: 'tpl.err.beforePlan', params: { date: planStart } })
   }
-  if (out.sessions.length === 0 && kind !== 'session') result.errors.push('La plantilla no tiene sesiones.')
+  if (out.sessions.length === 0 && kind !== 'session') result.errors.push({ key: 'tpl.err.empty' })
 
   const dates = out.sessions.map((r) => r.session.session_date).sort()
   result.first = dates[0] || null

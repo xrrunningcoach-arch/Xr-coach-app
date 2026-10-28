@@ -6,6 +6,7 @@ import LineChart from './charts/LineChart'
 import useToday from './calendar/useToday'
 import { getLang, tr, useT } from '../i18n'
 import { disciplineColor } from '../lib/disciplineColors'
+import { disciplineName } from '../lib/disciplines'
 import { addDays, mondayOf, shortDate, longDayTitle } from '../lib/dates'
 import {
   RANGE_OPTIONS,
@@ -71,8 +72,10 @@ export default function StatsDashboard({ sessions, disciplines }) {
   }
 
   const colorOf = (row) => disciplineColor(disciplines.find((d) => d.id === row.key) || null, disciplines)
-  const kmRows = km.map((r) => ({ key: r.key, label: r.name, color: colorOf(r), total: r.planned, done: r.done }))
-  const minRows = minutesDisc.map((r) => ({ key: r.key, label: r.name, color: colorOf(r), total: r.planned, done: r.done }))
+  // Nombre de la disciplina en el idioma activo («Sin disciplina» incluido).
+  const nameOf = (r) => (r.key === 'none' ? t('stats.noDiscipline') : disciplineName(disciplines.find((d) => d.id === r.key)) || r.name)
+  const kmRows = km.map((r) => ({ key: r.key, label: nameOf(r), color: colorOf(r), total: r.planned, done: r.done }))
+  const minRows = minutesDisc.map((r) => ({ key: r.key, label: nameOf(r), color: colorOf(r), total: r.planned, done: r.done }))
 
   const weekData = weekly.map((w) => ({
     ...w,
@@ -152,7 +155,7 @@ export default function StatsDashboard({ sessions, disciplines }) {
               ]}
               rows={km.map((r) => ({
                 key: r.key,
-                name: r.name,
+                name: nameOf(r),
                 sessions: `${r.doneCount}/${r.count}`,
                 planned: fmtKm(r.planned),
                 done: fmtKm(r.done),

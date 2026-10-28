@@ -18,7 +18,7 @@ function mesoItem() {
 
 test('plantilla vacía no valida', () => {
   const v = validateTemplate('mesocycle', 'Base', emptyPayload('mesocycle'))
-  assert.deepEqual(v, ['Añade al menos una sesión.'])
+  assert.deepEqual(v, [{ key: 'tpl.err.noSessions' }])
   assert.deepEqual(validateTemplate('session', '', { session: emptyTplSession() }).length, 2)
   const ok = emptyPayload('mesocycle')
   ok.blocks[0].sessions = [emptyTplSession({ session_type: 'Rodaje' })]

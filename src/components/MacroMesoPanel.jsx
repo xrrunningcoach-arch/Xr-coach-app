@@ -4,14 +4,15 @@ import StatusBadge from './StatusBadge'
 import { dateForWeekday, mondayOf, shortDate } from '../lib/dates'
 import { cycleDatesFromWeeks, cycleRange, cycleWeeksFromDates, overlappingCycles } from '../lib/cycles'
 import { ui } from '../ui/ui'
+import { useT } from '../i18n'
 import { sessionKm } from '../lib/stats'
 
 // Semáforo de macrociclos y mesociclos: rojo = pendiente, ámbar = en curso,
 // verde = completado. Se cambia a mano.
 const CYCLE_STATUS = {
-  pendiente: { label: 'Pendiente', color: 'var(--st-pend)' },
-  en_curso: { label: 'En curso', color: 'var(--st-curso)' },
-  completado: { label: 'Completado', color: 'var(--st-done)' },
+  pendiente: { labelKey: 'status.pending', color: 'var(--st-pend)' },
+  en_curso: { labelKey: 'mm.inProgress', color: 'var(--st-curso)' },
+  completado: { labelKey: 'status.done', color: 'var(--st-done)' },
 }
 const STATUS_ORDER = ['pendiente', 'en_curso', 'completado']
 const GREY = 'var(--chart-muted)'
@@ -27,8 +28,9 @@ function Dot({ color, size = 12 }) {
 }
 
 function StatusPicker({ value, onChange, disabled }) {
+  const t = useT()
   return (
-    <div role="group" aria-label="Estado" className="inline-flex border border-mist rounded-sm overflow-hidden bg-surface">
+    <div role="group" aria-label={t('zones.col.status')} className="inline-flex border border-mist rounded-sm overflow-hidden bg-surface">
       {STATUS_ORDER.map((key) => {
         const st = CYCLE_STATUS[key]
         const active = value === key
@@ -38,14 +40,14 @@ function StatusPicker({ value, onChange, disabled }) {
             type="button"
             disabled={disabled}
             onClick={() => !active && onChange(key)}
-            title={st.label}
+            title={t(st.labelKey)}
             aria-pressed={active}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors ${
               active ? 'bg-bg-dim font-semibold text-navy' : 'text-slate hover:bg-bg'
             }`}
           >
             <Dot color={active ? st.color : 'var(--st-idle)'} size={10} />
-            <span className={active ? '' : 'hidden sm:inline'}>{st.label}</span>
+            <span className={active ? '' : 'hidden sm:inline'}>{t(st.labelKey)}</span>
           </button>
         )
       })}
@@ -55,11 +57,11 @@ function StatusPicker({ value, onChange, disabled }) {
 
 // Estado "derivado" de una semana (microciclo) según sus sesiones.
 function weekState(items) {
-  if (items.length === 0) return { color: GREY, label: 'Sin sesiones' }
+  if (items.length === 0) return { color: GREY, labelKey: 'mm.noSessions' }
   const done = items.filter((s) => s.status === 'completado').length
-  if (done === items.length) return { color: CYCLE_STATUS.completado.color, label: 'Completada' }
-  if (done > 0) return { color: CYCLE_STATUS.en_curso.color, label: 'En curso' }
-  return { color: CYCLE_STATUS.pendiente.color, label: 'Pendiente' }
+  if (done === items.length) return { color: CYCLE_STATUS.completado.color, labelKey: 'mm.weekDone' }
+  if (done > 0) return { color: CYCLE_STATUS.en_curso.color, labelKey: 'mm.inProgress' }
+  return { color: CYCLE_STATUS.pendiente.color, labelKey: 'status.pending' }
 }
 
 function toggleIn(setFn, key) {
@@ -75,30 +77,31 @@ const inputCls = 'w-full border border-mist rounded-sm px-3 py-2 text-sm focus:o
 const labelCls = 'block font-mono text-xs text-slate mb-1'
 
 function MacroForm({ initial, onSave, onCancel, busy }) {
+  const t = useT()
   const [name, setName] = useState(initial.name || '')
   const [objective, setObjective] = useState(initial.objective || '')
   const [startDate, setStartDate] = useState(initial.start_date || '')
   const [endDate, setEndDate] = useState(initial.end_date || '')
   return (
     <div className="bg-surface border-2 border-navy rounded-sm p-4 space-y-3">
-      <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar macrociclo' : 'Nuevo macrociclo'}</h4>
+      <h4 className="font-display text-lg text-navy">{initial.id ? t('mm.macro.edit') : t('mm.macro.new')}</h4>
       <div>
-        <label className={labelCls}>Nombre</label>
+        <label className={labelCls}>{t('c.name')}</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={initial.placeholder} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelCls}>Fecha de inicio</label>
+          <label className={labelCls}>{t('c.startDate')}</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
         </div>
         <div>
-          <label className={labelCls}>Fecha de fin</label>
+          <label className={labelCls}>{t('c.endDate')}</label>
           <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
         </div>
       </div>
-      <p className="text-xs text-slate -mt-1">Si lo dejas vacío, se ajusta solo a las fechas de sus mesociclos.</p>
+      <p className="text-xs text-slate -mt-1">{t('mm.macro.autoDates')}</p>
       <div>
-        <label className={labelCls}>Objetivo (opcional)</label>
+        <label className={labelCls}>{t('mm.objectiveOpt')}</label>
         <textarea value={objective} onChange={(e) => setObjective(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
       </div>
       <div className="flex gap-3">
@@ -108,10 +111,10 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
           onClick={() => onSave({ ...initial, name, objective, start_date: startDate, end_date: endDate })}
           className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
-          Guardar
+          {t('common.save')}
         </button>
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate border border-mist rounded-sm hover:border-red hover:text-red">
-          Cancelar
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -119,6 +122,7 @@ function MacroForm({ initial, onSave, onCancel, busy }) {
 }
 
 function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
+  const t = useT()
   const [name, setName] = useState(initial.name || '')
   const [macroId, setMacroId] = useState(initial.macrocycle_id || '')
   const [weekStart, setWeekStart] = useState(initial.week_start ?? 1)
@@ -148,51 +152,51 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
   }
   return (
     <div className="bg-surface border-2 border-navy rounded-sm p-4 space-y-3">
-      <h4 className="font-display text-lg text-navy">{initial.id ? 'Editar mesociclo' : 'Nuevo mesociclo'}</h4>
+      <h4 className="font-display text-lg text-navy">{initial.id ? t('mm.meso.edit') : t('mm.meso.new')}</h4>
       <div>
-        <label className={labelCls}>Nombre</label>
+        <label className={labelCls}>{t('c.name')}</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={initial.placeholder} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelCls}>Fecha de inicio</label>
+          <label className={labelCls}>{t('c.startDate')}</label>
           <input type="date" value={startDate} onChange={(e) => changeDates(e.target.value, endDate)} className={inputCls} />
         </div>
         <div>
-          <label className={labelCls}>Fecha de fin</label>
+          <label className={labelCls}>{t('c.endDate')}</label>
           <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => changeDates(startDate, e.target.value)} className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelCls}>Semana de inicio</label>
+          <label className={labelCls}>{t('mm.weekStart')}</label>
           <input type="number" min={1} value={weekStart} onChange={(e) => changeWeeks(e.target.value, weekEnd)} className={inputCls} />
         </div>
         <div>
-          <label className={labelCls}>Semana final</label>
+          <label className={labelCls}>{t('mm.weekEnd')}</label>
           <input type="number" min={1} value={weekEnd} onChange={(e) => changeWeeks(weekStart, e.target.value)} className={inputCls} />
         </div>
       </div>
       <p className="text-xs text-slate -mt-1">
         {planStart
-          ? `Fechas y semanas van unidas (la semana 1 empieza el lunes ${shortDate(mondayOf(planStart))}). Las sesiones de este mesociclo aparecen en esos días del calendario del atleta.`
-          : 'El plan aún no tiene fecha de inicio: al guardar con fechas, el plan empezará el lunes de la fecha de inicio.'}
+          ? t('mm.datesSynced', { date: shortDate(mondayOf(planStart)) })
+          : t('mm.noPlanStart')}
       </p>
       <div>
-        <label className={labelCls}>Macrociclo</label>
+        <label className={labelCls}>{t('mm.macroField')}</label>
         <select value={macroId} onChange={(e) => setMacroId(e.target.value)} className={`${inputCls} bg-surface`}>
-          <option value="">Sin macrociclo</option>
+          <option value="">{t('mm.noMacro')}</option>
           {macros.map((mc) => (
             <option key={mc.id} value={mc.id}>{mc.name}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className={labelCls}>Enfoque principal</label>
+        <label className={labelCls}>{t('mm.focus')}</label>
         <input value={focus} onChange={(e) => setFocus(e.target.value)} className={inputCls} />
       </div>
       <div>
-        <label className={labelCls}>Objetivo clave</label>
+        <label className={labelCls}>{t('mm.keyObjective')}</label>
         <input value={keyObjective} onChange={(e) => setKeyObjective(e.target.value)} className={inputCls} />
       </div>
       <div className="flex gap-3">
@@ -202,10 +206,10 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
           onClick={() => onSave({ ...initial, name, macrocycle_id: macroId, week_start: weekStart, week_end: weekEnd, start_date: startDate, end_date: endDate, focus, key_objective: keyObjective })}
           className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
         >
-          Guardar
+          {t('common.save')}
         </button>
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate border border-mist rounded-sm hover:border-red hover:text-red">
-          Cancelar
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -216,6 +220,7 @@ function MesoForm({ initial, macros, planStart, onSave, onCancel, busy }) {
 // (microciclos) > sesiones. Los macrociclos y los mesociclos se muestran del
 // último al primero (el 1 queda abajo del todo).
 export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions, disciplines, onReload, onGoToPlan, onSaveToLibrary }) {
+  const t = useT()
   const sortedMacros = useMemo(
     () => [...macrocycles].sort((a, b) => b.order_index - a.order_index),
     [macrocycles]
@@ -303,12 +308,12 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   const setMesoStatus = (id, status) => run(supabase.from('mesocycles').update({ status }).eq('id', id))
 
   async function saveMacro(f) {
-    const name = f.name.trim() || `Macrociclo ${nextMacroOrder}`
+    const name = f.name.trim() || t('mm.macroName', { n: nextMacroOrder })
     const objective = f.objective.trim() || null
     let start_date = f.start_date || null
     let end_date = f.end_date || null
     if (start_date && end_date && end_date < start_date) {
-      ui.error('La fecha de fin no puede ser anterior a la de inicio.')
+      ui.error(t('mm.err.endBeforeStart'))
       return
     }
     // Sin fechas propias, el macrociclo abarca las de sus mesociclos.
@@ -329,8 +334,8 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
 
   async function deleteMacro(mc) {
     const count = (mesosByMacro[mc.id] || []).length
-    const extra = count > 0 ? ` Sus ${count} mesociclos NO se borran: pasarán a "Sin macrociclo".` : ''
-    if (!(await ui.confirm(`¿Eliminar el macrociclo "${mc.name}"?${extra}`, { danger: true, confirmLabel: 'Eliminar' }))) return
+    const extra = count > 0 ? ` ${t('mm.deleteMacroExtra', { count })}` : ''
+    if (!(await ui.confirm(`${t('mm.confirmDeleteMacro', { name: mc.name })}${extra}`, { danger: true, confirmLabel: t('c.delete') }))) return
     await run(supabase.from('macrocycles').delete().eq('id', mc.id))
   }
 
@@ -340,7 +345,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     let start_date = f.start_date || null
     let end_date = f.end_date || null
     if (start_date && end_date && end_date < start_date) {
-      ui.error('La fecha de fin no puede ser anterior a la de inicio.')
+      ui.error(t('mm.err.endBeforeStart'))
       return
     }
 
@@ -358,7 +363,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     if (planStart && start_date && end_date) {
       const w = cycleWeeksFromDates(planStart, start_date, end_date)
       if (!w) {
-        ui.error(`Las fechas deben ser iguales o posteriores al inicio del plan (semana del ${planStart}).`)
+        ui.error(t('mm.err.beforePlan', { date: planStart }))
         return
       }
       weekStart = w.week_start
@@ -370,16 +375,16 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     }
 
     if (!Number.isInteger(weekStart) || !Number.isInteger(weekEnd) || weekStart < 1 || weekEnd < weekStart || weekEnd > 104) {
-      ui.error('Revisa las semanas: deben ser números enteros, la final igual o mayor que la inicial.')
+      ui.error(t('mm.err.weeks'))
       return
     }
 
     const clash = overlappingCycles(mesocycles, start_date && end_date ? [start_date, end_date] : null, planStart, f.id)
-    if (clash.length && !(await ui.confirm(`Estas fechas se solapan con: ${clash.map((c) => c.name).join(', ')}. ¿Guardar igualmente?`, { confirmLabel: 'Guardar igualmente' }))) return
+    if (clash.length && !(await ui.confirm(t('mm.confirmOverlap', { names: clash.map((c) => c.name).join(', ') }), { confirmLabel: t('mm.saveAnyway') }))) return
 
     const order = f.id ? f.order_index : nextMesoOrder
     const payload = {
-      name: f.name.trim() || `Mesociclo ${order}`,
+      name: f.name.trim() || t('mm.mesoName', { n: order }),
       week_start: weekStart,
       week_end: weekEnd,
       start_date,
@@ -410,7 +415,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
   }
 
   async function deleteMeso(m) {
-    if (!(await ui.confirm(`¿Eliminar el mesociclo "${m.name}"? Sus sesiones NO se borran (se conservan en "Plan y sesiones").`, { danger: true, confirmLabel: 'Eliminar' }))) return
+    if (!(await ui.confirm(t('mm.confirmDeleteMeso', { name: m.name }), { danger: true, confirmLabel: t('c.delete') }))) return
     await run(supabase.from('mesocycles').delete().eq('id', m.id))
   }
 
@@ -462,19 +467,19 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
         >
           <span className="font-mono text-xs text-slate">{open ? '▾' : '▸'}</span>
           <Dot color={state.color} size={10} />
-          <span className="font-semibold text-navy">Semana {week}</span>
+          <span className="font-semibold text-navy">{t('cal.weekN', { n: week })}</span>
           <span className="font-mono text-[11px] text-slate ml-auto">
-            {done}/{items.length} ses. · {Math.round(km * 10) / 10} km
+            {t('mm.doneKm', { done, total: items.length, km: Math.round(km * 10) / 10 })}
           </span>
         </button>
         {open && (
           <div className="border-t border-mist px-3 py-2 space-y-2">
-            {items.length === 0 && <p className="text-xs text-slate italic">Esta semana todavía no tiene sesiones.</p>}
+            {items.length === 0 && <p className="text-xs text-slate italic">{t('mm.emptyWeek')}</p>}
             {items.map((s) => (
               <div key={s.id} className="flex items-start gap-2 text-sm">
-                <span className="font-mono text-xs text-slate w-10 shrink-0 pt-0.5">Día {s.day_number}</span>
+                <span className="font-mono text-xs text-slate w-10 shrink-0 pt-0.5">{t('common.day', { n: s.day_number })}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold">{s.session_type || <span className="text-slate italic font-normal">Sin tipo</span>}</p>
+                  <p className="font-semibold">{s.session_type || <span className="text-slate italic font-normal">{t('cc.noType')}</span>}</p>
                   {s.description && <p className="text-xs text-slate break-words">{s.description}</p>}
                 </div>
                 <span className="font-mono text-[11px] text-slate shrink-0">
@@ -485,10 +490,10 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
             ))}
             <div className="flex flex-wrap gap-4 pt-1">
               <button type="button" disabled={busy} onClick={() => addSession(week, meso)} className="text-xs font-semibold text-navy hover:text-red">
-                + Añadir sesión
+                {t('mm.addSession')}
               </button>
               <button type="button" onClick={onGoToPlan} className="text-xs font-semibold text-slate hover:text-red underline underline-offset-2">
-                Editar contenido en «Plan y sesiones»
+                {t('mm.editInPlan')}
               </button>
             </div>
           </div>
@@ -519,19 +524,19 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
           <StatusPicker value={meso.status || 'pendiente'} onChange={(s) => setMesoStatus(meso.id, s)} disabled={busy} />
         </div>
         <p className="px-3 pb-2 font-mono text-[11px] text-slate">
-          Sem {meso.week_start} - {meso.week_end}
+          {t('mm.mesoMeta', { from: meso.week_start, to: meso.week_end })}
           {cycleRange(meso, plan.start_date) ? ` · ${shortDate(cycleRange(meso, plan.start_date)[0])} → ${shortDate(cycleRange(meso, plan.start_date)[1])}` : ''}
-          {' '}· {stats.done}/{stats.total} sesiones · {Math.round(stats.km * 10) / 10} km
+          {' '}· {t('mm.doneKm', { done: stats.done, total: stats.total, km: Math.round(stats.km * 10) / 10 })}
         </p>
         {open && (
           <div className="border-t border-mist px-3 py-3 space-y-3">
             {(meso.focus || meso.key_objective) && (
               <div className="text-sm space-y-1">
                 {meso.focus && (
-                  <p><span className="font-mono text-xs text-slate">Enfoque: </span>{meso.focus}</p>
+                  <p><span className="font-mono text-xs text-slate">{t('mm.focusLabel')}</span>{meso.focus}</p>
                 )}
                 {meso.key_objective && (
-                  <p><span className="font-mono text-xs text-slate">Objetivo clave: </span>{meso.key_objective}</p>
+                  <p><span className="font-mono text-xs text-slate">{t('mm.keyObjLabel')}</span>{meso.key_objective}</p>
                 )}
               </div>
             )}
@@ -542,15 +547,15 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
                 onClick={() => setForm({ kind: 'meso', ...meso })}
                 className="text-xs font-semibold text-navy hover:text-red"
               >
-                Editar mesociclo
+                {t('mm.editMeso')}
               </button>
               {onSaveToLibrary && (
                 <button type="button" onClick={() => onSaveToLibrary('mesocycle', meso)} className="text-xs font-semibold text-navy hover:text-red">
-                  A la biblioteca
+                  {t('csr.toLibrary')}
                 </button>
               )}
               <button type="button" onClick={() => deleteMeso(meso)} className="text-xs font-semibold text-slate hover:text-red">
-                Eliminar
+                {t('c.delete')}
               </button>
             </div>
           </div>
@@ -566,7 +571,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
       macrocycle_id: macroId || '',
       week_start: lastEnd + 1,
       week_end: lastEnd + 4,
-      placeholder: `Mesociclo ${nextMesoOrder}`,
+      placeholder: t('mm.mesoName', { n: nextMesoOrder }),
     }
   }
 
@@ -574,23 +579,23 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-display text-xl text-navy">Macrociclos y mesociclos</h3>
-          <p className="font-mono text-[11px] text-slate">Del más reciente al primero · pulsa para desplegar</p>
+          <h3 className="font-display text-xl text-navy">{t('sum.macroMeso')}</h3>
+          <p className="font-mono text-[11px] text-slate">{t('mm.sub')}</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setForm({ kind: 'macro', placeholder: `Macrociclo ${nextMacroOrder}` })}
+            onClick={() => setForm({ kind: 'macro', placeholder: t('mm.macroName', { n: nextMacroOrder }) })}
             className="px-3 py-2 bg-brand hover:bg-brand-deep text-white text-xs font-semibold rounded-sm"
           >
-            + Macrociclo
+            {t('mm.newMacroBtn')}
           </button>
           <button
             type="button"
             onClick={() => setForm(newMesoDefaults(sortedMacros[0]?.id))}
             className="px-3 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-sm"
           >
-            + Mesociclo
+            {t('mm.newMesoBtn')}
           </button>
         </div>
       </div>
@@ -615,7 +620,7 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
 
       {sortedMacros.length === 0 && orphanMesos.length === 0 && (
         <p className="text-sm text-slate bg-surface border border-mist rounded-sm p-5">
-          Todavía no hay macrociclos ni mesociclos. Pulsa «+ Macrociclo» para empezar.
+          {t('mm.emptyAll')}
         </p>
       )}
 
@@ -642,33 +647,33 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
               <StatusPicker value={mc.status || 'pendiente'} onChange={(s) => setMacroStatus(mc.id, s)} disabled={busy} />
             </div>
             <p className="px-4 pb-3 font-mono text-[11px] text-slate">
-              {mesos.length} {mesos.length === 1 ? 'mesociclo' : 'mesociclos'}
-              {mesos.length > 0 && ` · Sem ${Math.min(...starts)} - ${Math.max(...ends)} · ${stats.done}/${stats.total} sesiones`}
+              {t('apply.mesos', { count: mesos.length })}
+              {mesos.length > 0 && t('mm.weeksRange', { from: Math.min(...starts), to: Math.max(...ends), done: stats.done, total: stats.total })}
               {mc.start_date && mc.end_date ? ` · ${shortDate(mc.start_date)} → ${shortDate(mc.end_date)}` : ''}
             </p>
             {open && (
               <div className="border-t border-mist px-4 py-4 space-y-3">
                 {mc.objective && (
-                  <p className="text-sm"><span className="font-mono text-xs text-slate">Objetivo: </span>{mc.objective}</p>
+                  <p className="text-sm"><span className="font-mono text-xs text-slate">{t('mm.objectiveLabel')}</span>{mc.objective}</p>
                 )}
                 {mesos.length === 0 && (
-                  <p className="text-sm text-slate italic">Este macrociclo todavía no tiene mesociclos.</p>
+                  <p className="text-sm text-slate italic">{t('mm.macroNoMeso')}</p>
                 )}
                 {mesos.map(renderMeso)}
                 <div className="flex flex-wrap gap-4 pt-1">
                   <button type="button" onClick={() => setForm(newMesoDefaults(mc.id))} className="text-xs font-semibold text-navy hover:text-red">
-                    + Mesociclo en este macrociclo
+                    {t('mm.mesoInMacro')}
                   </button>
                   <button type="button" onClick={() => setForm({ kind: 'macro', ...mc })} className="text-xs font-semibold text-navy hover:text-red">
-                    Editar macrociclo
+                    {t('mm.editMacro')}
                   </button>
                   {onSaveToLibrary && mesos.length > 0 && (
                     <button type="button" onClick={() => onSaveToLibrary('macrocycle', mc)} className="text-xs font-semibold text-navy hover:text-red">
-                      A la biblioteca
+                      {t('csr.toLibrary')}
                     </button>
                   )}
                   <button type="button" onClick={() => deleteMacro(mc)} className="text-xs font-semibold text-slate hover:text-red">
-                    Eliminar
+                    {t('c.delete')}
                   </button>
                 </div>
               </div>
@@ -679,8 +684,8 @@ export default function MacroMesoPanel({ plan, macrocycles, mesocycles, sessions
 
       {orphanMesos.length > 0 && (
         <div className="bg-surface border border-mist rounded-sm p-4 space-y-3">
-          <h4 className="font-display text-lg text-navy">Sin macrociclo</h4>
-          <p className="text-xs text-slate">Estos mesociclos no pertenecen a ningún macrociclo. Edítalos para asignarles uno.</p>
+          <h4 className="font-display text-lg text-navy">{t('mm.noMacro')}</h4>
+          <p className="text-xs text-slate">{t('mm.orphanHelp')}</p>
           {orphanMesos.map(renderMeso)}
         </div>
       )}

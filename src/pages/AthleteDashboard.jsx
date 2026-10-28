@@ -11,8 +11,9 @@ import TodayView from '../components/TodayView'
 import { useT } from '../i18n'
 import useToday from '../components/calendar/useToday'
 import { sessionKm, sessionKmDone } from '../lib/stats'
-import { effectiveMaxHr, pickMaxHr, sanitizeManualZones } from '../lib/zones'
+import { pickMaxHr, sanitizeManualZones } from '../lib/zones'
 import ThresholdsPanel from '../components/ThresholdsPanel'
+import RpeScaleTable from '../components/RpeScaleTable'
 
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
 // panel lateral (AthleteHome); este componente recibe la sección activa y
@@ -196,7 +197,8 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
       {section === 'zonas' && (
         <div className="space-y-4">
           <HrZonesView hrZones={hrZones} manualZones={manualZones} test={thresholdTest} />
-          <ThresholdsPanel test={thresholdTest} hrv={hrv} athleteId={user.id} today={today} onChanged={() => loadData(true)} />
+          <RpeScaleTable />
+          <ThresholdsPanel test={thresholdTest} hrv={hrv} athleteId={user.id} today={today} showTest={false} onChanged={() => loadData(true)} />
         </div>
       )}
 
@@ -229,9 +231,8 @@ function HrZonesView({ hrZones, manualZones, test }) {
   const t = useT()
   if (Object.keys(manualZones).length === 0) return <EmptyState text={t('zones.empty')} />
   // Una sola FC máx.: la del test de umbrales más reciente manda sobre la del plan.
-  const testMax = pickMaxHr(test?.max_hr)
-  const used = effectiveMaxHr({ maxHrReal: testMax ?? hrZones?.max_hr_real, age: hrZones?.age })
-  return <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={manualZones} />
+  const maxHr = pickMaxHr(test?.max_hr, hrZones?.max_hr_real)
+  return <ZonesTable maxHr={maxHr} manualZones={manualZones} test={test} />
 }
 
 function TestsView({ tests }) {

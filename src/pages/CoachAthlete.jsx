@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
 import { generatePlanSkeleton } from '../lib/planGenerator'
-import { fetchDisciplines } from '../lib/disciplines'
+import { fetchDisciplines, raceName } from '../lib/disciplines'
 import { weeklyLoad } from '../lib/load'
 import WeekLoadBars from '../components/WeekLoadBars'
 import LoadingScreen from '../components/LoadingScreen'
@@ -13,20 +13,23 @@ import ZonesTable from '../components/ZonesTable'
 import CoachCalendar from '../components/CoachCalendar'
 import ApplyTemplateModal from '../components/library/ApplyTemplateModal'
 import SaveToLibraryModal from '../components/library/SaveToLibraryModal'
-import { dateForWeekday, todayISO } from '../lib/dates'
+import { dateForWeekday, shortDate, todayISO } from '../lib/dates'
+import { nextMondayISO, sortByDate, weekBounds } from '../lib/planCalendar'
 import { cycleDatesFromWeeks } from '../lib/cycles'
-import { fetchExercisesBySession } from '../lib/templatesApi'
+import { fetchExercisesBySession, placeUndatedSessions } from '../lib/templatesApi'
 import { serializeMacrocycle, serializeMesocycle, serializeSession } from '../lib/templates'
-import { effectiveMaxHr, pickMaxHr, sanitizeManualZones } from '../lib/zones'
+import { pickMaxHr, sanitizeManualZones } from '../lib/zones'
 import PlanActions from '../components/PlanActions'
 import ThresholdTestForm from '../components/ThresholdTestForm'
 import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
 import { ui } from '../ui/ui'
+import { useT } from '../i18n'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
   const { user } = useAuth()
+  const t = useT()
 
   const [loading, setLoading] = useState(true)
   const [athlete, setAthlete] = useState(null)
@@ -43,6 +46,7 @@ export default function CoachAthlete() {
   const [tests, setTests] = useState([])
   const [disciplines, setDisciplines] = useState([])
   const [tab, setTab] = useState('resumen')
+  const [calendarFocus, setCalendarFocus] = useState(null) // { date, key }: lleva el calendario a esa semana
   const [libraryDraft, setLibraryDraft] = useState(null) // { kind, defaultName, payload }
 
   useEffect(() => {
@@ -114,7 +118,7 @@ export default function CoachAthlete() {
         const ex = await fetchExercisesBySession([entity.id])
         setLibraryDraft({
           kind,
-          defaultName: entity.session_type || 'Sesión',
+          defaultName: entity.session_type || t('common.session'),
           payload: serializeSession(entity, disciplines, ex[entity.id] || []),
         })
       } else if (kind === 'mesocycle') {
@@ -132,30 +136,30 @@ export default function CoachAthlete() {
   }
 
   if (loading) return <LoadingScreen />
-  if (!athlete) return <p className="text-red">No se ha encontrado este atleta.</p>
+  if (!athlete) return <p className="text-red">{t('ed.notFound')}</p>
 
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/coach" className="text-sm text-slate hover:text-navy">← Volver al panel</Link>
+        <Link to="/coach" className="text-sm text-slate hover:text-navy">{t('ed.back')}</Link>
         <h1 className="font-display text-2xl text-navy mt-2">{athlete.full_name || athlete.email}</h1>
         <p className="text-sm text-slate">{athlete.email}</p>
         {athlete.is_active === false && (
           <p className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-red/15 text-red-deep">
-            Atleta archivado · no puede entrar en la app
+            {t('ed.archived')}
           </p>
         )}
       </div>
 
       <div className="flex gap-2 border-b border-mist overflow-x-auto">
         {[
-          ['resumen', 'Perfil y mesociclos'],
-          ['plan', 'Plan y sesiones'],
-          ['calendario', 'Calendario'],
-          ['zonas', 'Zonas de FC'],
-          ['objetivos', 'Objetivos'],
-          ['tests', 'Test y marcas'],
-          ['chat', 'Chat'],
+          ['resumen', t('ed.tab.summary')],
+          ['plan', t('ed.tab.plan')],
+          ['calendario', t('nav.calendar')],
+          ['zonas', t('nav.zones')],
+          ['objetivos', t('nav.goals')],
+          ['tests', t('nav.tests')],
+          ['chat', t('nav.chatShort')],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -172,6 +176,9 @@ export default function CoachAthlete() {
       {tab === 'resumen' && (
         <AthleteSummary
           athlete={athlete}
+          manualZones={manualZones}
+          thresholdTest={thresholdTests[0] || null}
+          hrZones={hrZones}
           plan={plan}
           macrocycles={macrocycles}
           mesocycles={mesocycles}
@@ -193,6 +200,10 @@ export default function CoachAthlete() {
             races={races}
             onReload={loadAll}
             onSaveToLibrary={saveToLibrary}
+            onShowInCalendar={(date) => {
+              setCalendarFocus({ date, key: Date.now() })
+              setTab('calendario')
+            }}
           />
         ) : (
           <PlanBuilder
@@ -213,7 +224,6 @@ export default function CoachAthlete() {
           manualZones={manualZones}
           thresholdTests={thresholdTests}
           today={todayISO()}
-          athleteAge={athlete.age}
           onSaved={() => loadAll(true)}
         />
       )}
@@ -227,6 +237,9 @@ export default function CoachAthlete() {
           milestones={milestones}
           onReload={loadAll}
           onSaveSessionToLibrary={(session) => saveToLibrary('session', session)}
+          focusDate={calendarFocus?.date}
+          focusKey={calendarFocus?.key}
+          onShowInPlan={() => setTab('plan')}
         />
       )}
       {tab === 'objetivos' && plan && <MilestonesEditor planId={plan.id} milestones={milestones} onChanged={loadAll} />}
@@ -234,19 +247,19 @@ export default function CoachAthlete() {
       {tab === 'chat' && <ChatPanel athleteId={athlete.id} otherName={athlete.full_name || athlete.email} />}
 
       {(tab === 'zonas' || tab === 'objetivos' || tab === 'tests') && !plan && (
-        <p className="text-sm text-slate">Crea primero un plan en la pestaña "Plan y sesiones".</p>
+        <p className="text-sm text-slate">{t('ed.needPlan')}</p>
       )}
       {tab === 'calendario' && !plan && (
         <div className="space-y-3">
           <p className="text-sm text-slate">
-            Este atleta aún no tiene plan. Puedes crearlo en «Plan y sesiones» o aplicar directamente algo de tu biblioteca: el plan se crea solo.
+            {t('ed.noPlanCalendar')}
           </p>
           <button
             type="button"
             onClick={() => setApplyOpen(true)}
             className="px-3 py-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm"
           >
-            Aplicar de la biblioteca
+            {t('ed.applyLibrary')}
           </button>
         </div>
       )}
@@ -270,11 +283,12 @@ export default function CoachAthlete() {
 // CREAR PLAN
 // ----------------------------------------------------------------------------
 function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
+  const t = useT()
   const [raceId, setRaceId] = useState(races[0]?.id || '')
   const [useCustom, setUseCustom] = useState(false)
   const [customName, setCustomName] = useState('')
   const [duration, setDuration] = useState(11)
-  const [startDate, setStartDate] = useState('')
+  const [startDate, setStartDate] = useState(() => nextMondayISO())
   const [raceDate, setRaceDate] = useState('')
   const [currentPace, setCurrentPace] = useState('')
   const [targetPace, setTargetPace] = useState('')
@@ -309,7 +323,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
       return
     }
 
-    const { mesocycles, sessions } = generatePlanSkeleton(Number(duration))
+    const { mesocycles, sessions } = generatePlanSkeleton(Number(duration), 3, t)
 
     // Todo plan nuevo nace con un "Macrociclo 1" que agrupa sus mesociclos;
     // luego puedes añadir más macrociclos desde la pestaña "Perfil y mesociclos".
@@ -374,16 +388,16 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 
   return (
     <form onSubmit={handleCreate} className="bg-surface border border-mist rounded-sm p-6 space-y-5 max-w-2xl">
-      <h2 className="font-display text-xl text-navy">Crear plan de entrenamiento</h2>
+      <h2 className="font-display text-xl text-navy">{t('ed.plan.create')}</h2>
 
       <div>
-        <label className="block font-mono text-xs text-slate mb-1.5">Prueba</label>
+        <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.race')}</label>
         <div className="flex flex-wrap gap-3 mb-2">
           <label className="flex items-center gap-2 text-sm">
-            <input type="radio" checked={!useCustom} onChange={() => setUseCustom(false)} /> Catálogo
+            <input type="radio" checked={!useCustom} onChange={() => setUseCustom(false)} /> {t('ed.plan.catalog')}
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="radio" checked={useCustom} onChange={() => setUseCustom(true)} /> Personalizada
+            <input type="radio" checked={useCustom} onChange={() => setUseCustom(true)} /> {t('ed.plan.custom')}
           </label>
         </div>
         {!useCustom ? (
@@ -393,14 +407,14 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
             className="w-full border border-mist rounded-sm px-3 py-2.5"
           >
             {races.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}{r.distance_km ? ` (${r.distance_km} km)` : ''}</option>
+              <option key={r.id} value={r.id}>{raceName(r)}{r.distance_km ? ` (${r.distance_km} km)` : ''}</option>
             ))}
           </select>
         ) : (
           <input
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
-            placeholder="Ej. Behobia-San Sebastián, Trail 25K…"
+            placeholder={t('ed.plan.customPh')}
             className="w-full border border-mist rounded-sm px-3 py-2.5"
           />
         )}
@@ -408,7 +422,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Duración (semanas)</label>
+          <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.duration')}</label>
           <input
             type="number"
             min={1}
@@ -420,19 +434,21 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
           />
         </div>
         <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Fecha de inicio</label>
+          <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.start')}</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            required
             className="w-full border border-mist rounded-sm px-3 py-2.5"
           />
+          <p className="text-xs text-slate mt-1">{t('ed.plan.startHelp')}</p>
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Fecha de la prueba</label>
+          <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.raceDate')}</label>
           <input
             type="date"
             value={raceDate}
@@ -445,20 +461,20 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Ritmo actual</label>
+          <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.currentPace')}</label>
           <input
             value={currentPace}
             onChange={(e) => setCurrentPace(e.target.value)}
-            placeholder="Ej. 4:15 - 4:20 min/km"
+            placeholder={t('ed.plan.currentPh')}
             className="w-full border border-mist rounded-sm px-3 py-2.5"
           />
         </div>
         <div>
-          <label className="block font-mono text-xs text-slate mb-1.5">Ritmo objetivo</label>
+          <label className="block font-mono text-xs text-slate mb-1.5">{t('ed.plan.targetPace')}</label>
           <input
             value={targetPace}
             onChange={(e) => setTargetPace(e.target.value)}
-            placeholder="Ej. 3:50 - 3:55 min/km"
+            placeholder={t('ed.plan.targetPh')}
             className="w-full border border-mist rounded-sm px-3 py-2.5"
           />
         </div>
@@ -471,10 +487,10 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
         disabled={saving}
         className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-sm disabled:opacity-60"
       >
-        {saving ? 'Generando plan…' : 'Generar esqueleto de plan'}
+        {saving ? t('ed.plan.generating') : t('ed.plan.generate')}
       </button>
       <p className="text-xs text-slate">
-        Se crearán los mesociclos y las filas de sesión en blanco, listas para que rellenes el contenido de cada entrenamiento.
+        {t('ed.plan.generateNote')}
       </p>
     </form>
   )
@@ -483,14 +499,17 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 // ----------------------------------------------------------------------------
 // EDITAR PLAN + SESIONES + EVALUACIÓN
 // ----------------------------------------------------------------------------
-function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, onSaveToLibrary }) {
+function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, onSaveToLibrary, onShowInCalendar }) {
+  const t = useT()
   const weeks = useMemo(() => {
     const byWeek = {}
     sessions.forEach((s) => {
       if (!byWeek[s.week_number]) byWeek[s.week_number] = []
       byWeek[s.week_number].push(s)
     })
-    return Object.entries(byWeek).map(([week, items]) => ({ week: Number(week), items })).sort((a, b) => a.week - b.week)
+    return Object.entries(byWeek)
+      .map(([week, items]) => ({ week: Number(week), items: sortByDate(items) }))
+      .sort((a, b) => a.week - b.week)
   }, [sessions])
 
   // Carga real registrada por semana (session-RPE x duración), para ver de
@@ -534,6 +553,13 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
     else onReload()
   }
 
+  const undated = sessions.filter((s) => !s.session_date)
+  async function handlePlaceUndated() {
+    const err = await placeUndatedSessions(sessions, plan.start_date)
+    if (err) ui.error(err.message)
+    else onReload()
+  }
+
   async function handleStatusChange(status) {
     const { error } = await supabase.from('training_plans').update({ status }).eq('id', plan.id)
     if (error) ui.error(error.message)
@@ -545,10 +571,10 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
       <div className="bg-navy-deep text-white rounded-sm p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-mono text-xs text-red mb-1">
-            {plan.races?.name || plan.custom_race_name} · {plan.duration_weeks} semanas
+            {raceName(plan.races) || plan.custom_race_name} · {t('lib.weeks', { count: plan.duration_weeks })}
           </p>
           <p className="text-sm text-white/80">
-            {plan.start_date || '—'} → {plan.race_date || '—'} · Objetivo: {plan.target_pace || '—'}
+            {t('ed.planDates', { start: plan.start_date || '—', end: plan.race_date || '—', pace: plan.target_pace || '—' })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -557,22 +583,42 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
             onChange={(e) => handleStatusChange(e.target.value)}
             className="bg-white/10 border border-white/20 rounded-sm px-3 py-2 text-sm"
           >
-            <option value="draft">Borrador</option>
-            <option value="active">Activo</option>
-            <option value="completed">Completado</option>
+            <option value="draft">{t('ed.status.draft')}</option>
+            <option value="active">{t('ed.status.active')}</option>
+            <option value="completed">{t('ed.status.completed')}</option>
           </select>
           <PlanActions plan={plan} races={races} sessionCount={sessions.length} onChanged={onReload} />
         </div>
       </div>
 
+      {undated.length > 0 && plan.start_date && (
+        <div className="bg-surface border border-mist rounded-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm">{t('ed.undated', { count: undated.length })}</p>
+          <button type="button" onClick={handlePlaceUndated} className="px-3 py-2 text-xs font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm">
+            {t('ed.placeUndated')}
+          </button>
+        </div>
+      )}
+
       {weeks.map(({ week, items }) => {
+        const bounds = plan.start_date ? weekBounds(plan.start_date, week) : null
         const meso = mesocycles.find((m) => week >= m.week_start && week <= m.week_end)
         const weekLoad = loadByWeek.find((w) => w.week === week)
         return (
           <div key={week} className="bg-surface border border-mist rounded-sm overflow-hidden">
             <div className="bg-bg-dim px-5 py-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-display text-lg text-navy">Semana {week}</h3>
-              <span className="font-mono text-[11px] text-slate">{meso?.name}</span>
+              <h3 className="font-display text-lg text-navy">
+                {t('cal.weekN', { n: week })}
+                {bounds && <span className="font-mono text-xs text-slate ml-3">{shortDate(bounds.from)} – {shortDate(bounds.to)}</span>}
+              </h3>
+              <span className="flex items-center gap-4">
+                <span className="font-mono text-[11px] text-slate">{meso?.name}</span>
+                {bounds && onShowInCalendar && (
+                  <button type="button" onClick={() => onShowInCalendar(bounds.from)} className="text-xs font-semibold text-navy hover:text-red">
+                    {t('ed.viewInCalendar')}
+                  </button>
+                )}
+              </span>
             </div>
             <WeekLoadBars weekLoad={weekLoad} maxLoad={maxLoad} maxImpact={maxImpact} />
             <div className="divide-y divide-mist">
@@ -593,7 +639,7 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
                 onClick={() => handleAddRow(week, meso?.id || null)}
                 className="text-sm font-semibold text-navy hover:text-red"
               >
-                + Añadir sesión a la semana {week}
+                {t('ed.addSessionWeek', { n: week })}
               </button>
             </div>
           </div>
@@ -606,24 +652,24 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
 // ----------------------------------------------------------------------------
 // ZONAS DE FC
 // ----------------------------------------------------------------------------
-function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thresholdTests = [], today, athleteAge, onSaved }) {
-  const [age, setAge] = useState(hrZones?.age ?? athleteAge ?? '')
+function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thresholdTests = [], today, onSaved }) {
+  const t = useT()
   const [maxHr, setMaxHr] = useState(hrZones?.max_hr_real ?? '')
   const [restingHr, setRestingHr] = useState(hrZones?.resting_hr ?? '')
   const [saving, setSaving] = useState(false)
-  // Vista previa en directo de las zonas manuales que se están escribiendo.
+  // Vista previa en directo de las zonas que se están escribiendo.
   const [previewManual, setPreviewManual] = useState(manualZones)
 
-  // Los números de la tabla se recalculan al escribir, sin esperar a guardar.
+  // FC máx. solo como referencia para mostrar el %: la del test más reciente
+  // o la que escribas aquí. No hay ninguna estimación con la edad.
   const latest = thresholdTests[0] || null
-  const used = effectiveMaxHr({ maxHrReal: pickMaxHr(latest?.max_hr, maxHr), age })
+  const used = pickMaxHr(latest?.max_hr, maxHr)
 
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true)
     const { error } = await supabase.from('hr_zones').upsert({
       plan_id: planId,
-      age: age === '' ? null : Number(age),
       max_hr_real: maxHr === '' ? null : Number(maxHr),
       resting_hr: restingHr === '' ? null : Number(restingHr),
     })
@@ -635,34 +681,26 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
   return (
     <div className="space-y-6">
       <form onSubmit={handleSave} className="bg-surface border border-mist rounded-sm p-6 space-y-4 max-w-2xl">
-        <h2 className="font-display text-xl text-navy">Datos base (solo como referencia para el %)</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <h2 className="font-display text-xl text-navy">{t('zones.baseTitle')}</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">Edad</label>
-            <input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
-          </div>
-          <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">FC máxima real (test de campo)</label>
+            <label className="block font-mono text-xs text-slate mb-1.5">{t('zones.maxHrReal')}</label>
             <input type="number" value={maxHr} onChange={(e) => setMaxHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
           </div>
           <div>
-            <label className="block font-mono text-xs text-slate mb-1.5">FC de reposo (en ayunas)</label>
+            <label className="block font-mono text-xs text-slate mb-1.5">{t('zones.restingHr')}</label>
             <input type="number" value={restingHr} onChange={(e) => setRestingHr(e.target.value)} className="w-full border border-mist rounded-sm px-3 py-2.5" />
           </div>
         </div>
         <div className="text-sm text-slate space-y-1">
           <p>
-            FC máxima estimada (220 - edad):{' '}
-            <span className="font-mono text-navy">{used.estimated ? `${used.estimated} ppm` : '—'}</span>
+            {t('zones.maxHrUsed')}:{' '}
+            <span className="font-mono text-navy">{used ? `${used} ${t('unit.bpm')}` : '—'}</span>
           </p>
-          <p>
-            FC máxima usada en las zonas:{' '}
-            <span className="font-mono text-navy">{used.value ? `${used.value} ppm (${used.source})` : '—'}</span>
-          </p>
-          <p className="text-xs">Se usa solo para mostrar a qué % de la FC máx. equivale cada zona que escribas. Las zonas no se calculan solas.</p>
+          <p className="text-xs">{t('zones.baseNote')}</p>
         </div>
         <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
-          {saving ? 'Guardando…' : 'Guardar zonas'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       </form>
 
@@ -677,7 +715,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
 
       <ThresholdTestForm athleteId={athleteId} coachId={coachId} today={today} history={thresholdTests} onSaved={onSaved} />
 
-      <ZonesTable maxHr={used.value} sourceLabel={used.source} manualZones={previewManual} />
+      <ZonesTable maxHr={used} manualZones={previewManual} test={latest} />
     </div>
   )
 }
@@ -686,6 +724,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
 // CALENDARIO / HITOS
 // ----------------------------------------------------------------------------
 function MilestonesEditor({ planId, milestones, onChanged }) {
+  const t = useT()
   const [form, setForm] = useState({ event_date: '', title: '', type: '', week_ref: '', notes: '' })
   const [saving, setSaving] = useState(false)
 
@@ -708,7 +747,7 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
   return (
     <div className="space-y-6">
       <div className="bg-surface border border-mist rounded-sm divide-y divide-mist">
-        {milestones.length === 0 && <p className="px-5 py-6 text-sm text-slate">Sin hitos todavía.</p>}
+        {milestones.length === 0 && <p className="px-5 py-6 text-sm text-slate">{t('ed.ms.none')}</p>}
         {milestones.map((m) => (
           <div key={m.id} className="px-5 py-4 flex items-start justify-between gap-4">
             <div>
@@ -716,22 +755,22 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
               <p className="text-sm text-slate">{m.notes}</p>
               <p className="font-mono text-xs text-slate mt-1">{m.event_date} · {m.week_ref}</p>
             </div>
-            <button onClick={() => handleDelete(m.id)} className="text-xs text-red hover:text-red-deep shrink-0">Eliminar</button>
+            <button onClick={() => handleDelete(m.id)} className="text-xs text-red hover:text-red-deep shrink-0">{t('c.delete')}</button>
           </div>
         ))}
       </div>
 
       <form onSubmit={handleAdd} className="bg-surface border border-mist rounded-sm p-6 space-y-4">
-        <h3 className="font-display text-lg text-navy">Añadir hito</h3>
+        <h3 className="font-display text-lg text-navy">{t('ed.ms.add')}</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Título" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Tipo (Fin de bloque / Competición…)" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Semana del plan" value={form.week_ref} onChange={(e) => setForm({ ...form, week_ref: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('ed.ms.title')} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('ed.ms.type')} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('ed.ms.weekRef')} value={form.week_ref} onChange={(e) => setForm({ ...form, week_ref: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
         </div>
-        <textarea placeholder="Notas" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
+        <textarea placeholder={t('ed.ms.notes')} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
         <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
-          {saving ? 'Guardando…' : 'Añadir'}
+          {saving ? t('common.saving') : t('c.add')}
         </button>
       </form>
     </div>
@@ -742,6 +781,7 @@ function MilestonesEditor({ planId, milestones, onChanged }) {
 // TEST Y MARCAS
 // ----------------------------------------------------------------------------
 function TestsEditor({ planId, tests, onChanged }) {
+  const t = useT()
   const [form, setForm] = useState({
     test_date: '', block_label: '', test_type: '', distance: '', result: '', pace: '', rpe_reached: '', observations: '',
   })
@@ -769,24 +809,24 @@ function TestsEditor({ planId, tests, onChanged }) {
         <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-bg-dim">
             <tr>
-              {['Fecha', 'Bloque', 'Tipo', 'Distancia', 'Resultado', 'Ritmo', 'RPE', 'Obs.', ''].map((h) => (
-                <th key={h} className="text-left px-3 py-3 font-mono text-xs text-slate">{h}</th>
+              {[t('tests.col.date'), t('tests.col.block'), t('tests.col.type'), t('tests.col.distance'), t('tests.col.result'), t('tests.col.pace'), 'RPE', t('tests.col.notes'), ''].map((h, i) => (
+                <th key={i} className="text-left px-3 py-3 font-mono text-xs text-slate">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-mist">
-            {tests.map((t) => (
-              <tr key={t.id}>
-                <td className="px-3 py-3 font-mono text-xs">{t.test_date}</td>
-                <td className="px-3 py-3">{t.block_label}</td>
-                <td className="px-3 py-3">{t.test_type}</td>
-                <td className="px-3 py-3">{t.distance}</td>
-                <td className="px-3 py-3 font-mono">{t.result}</td>
-                <td className="px-3 py-3 font-mono">{t.pace}</td>
-                <td className="px-3 py-3">{t.rpe_reached}</td>
-                <td className="px-3 py-3 text-slate">{t.observations}</td>
+            {tests.map((row) => (
+              <tr key={row.id}>
+                <td className="px-3 py-3 font-mono text-xs">{row.test_date}</td>
+                <td className="px-3 py-3">{row.block_label}</td>
+                <td className="px-3 py-3">{row.test_type}</td>
+                <td className="px-3 py-3">{row.distance}</td>
+                <td className="px-3 py-3 font-mono">{row.result}</td>
+                <td className="px-3 py-3 font-mono">{row.pace}</td>
+                <td className="px-3 py-3">{row.rpe_reached}</td>
+                <td className="px-3 py-3 text-slate">{row.observations}</td>
                 <td className="px-3 py-3">
-                  <button onClick={() => handleDelete(t.id)} className="text-xs text-red hover:text-red-deep">Eliminar</button>
+                  <button onClick={() => handleDelete(row.id)} className="text-xs text-red hover:text-red-deep">{t('c.delete')}</button>
                 </td>
               </tr>
             ))}
@@ -795,19 +835,19 @@ function TestsEditor({ planId, tests, onChanged }) {
       </div>
 
       <form onSubmit={handleAdd} className="bg-surface border border-mist rounded-sm p-6 space-y-4">
-        <h3 className="font-display text-lg text-navy">Añadir test / marca</h3>
+        <h3 className="font-display text-lg text-navy">{t('ed.test.add')}</h3>
         <div className="grid sm:grid-cols-3 gap-4">
           <input type="date" value={form.test_date} onChange={(e) => setForm({ ...form, test_date: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Bloque (Ej. Fin Meso 1)" value={form.block_label} onChange={(e) => setForm({ ...form, block_label: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Tipo de test" value={form.test_type} onChange={(e) => setForm({ ...form, test_type: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Distancia" value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Resultado" value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="Ritmo" value={form.pace} onChange={(e) => setForm({ ...form, pace: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
-          <input placeholder="RPE alcanzado" value={form.rpe_reached} onChange={(e) => setForm({ ...form, rpe_reached: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('ed.test.block')} value={form.block_label} onChange={(e) => setForm({ ...form, block_label: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('tests.col.type')} value={form.test_type} onChange={(e) => setForm({ ...form, test_type: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('tests.col.distance')} value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('tests.col.result')} value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('tests.col.pace')} value={form.pace} onChange={(e) => setForm({ ...form, pace: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
+          <input placeholder={t('ed.test.rpe')} value={form.rpe_reached} onChange={(e) => setForm({ ...form, rpe_reached: e.target.value })} className="border border-mist rounded-sm px-3 py-2.5" />
         </div>
-        <textarea placeholder="Observaciones" value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
+        <textarea placeholder={t('tests.col.notes')} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} rows={2} className="w-full border border-mist rounded-sm px-3 py-2.5 resize-none" />
         <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60">
-          {saving ? 'Guardando…' : 'Añadir'}
+          {saving ? t('common.saving') : t('c.add')}
         </button>
       </form>
     </div>

@@ -50,15 +50,15 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
   return (
     <div className="bg-surface border border-mist rounded-sm overflow-hidden">
       <div className="px-5 py-3 bg-bg-dim flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-display text-lg text-navy">Semanas y volumen</h3>
+        <h3 className="font-display text-lg text-navy">{t('sum.weeksVolume')}</h3>
         <span className="font-mono text-[11px] text-slate">
-          {Math.round(totalDone * 10) / 10} / {Math.round(totalPlanned * 10) / 10} km completados
+          {t('wv.summary', { done: Math.round(totalDone * 10) / 10, total: Math.round(totalPlanned * 10) / 10 })}
         </span>
       </div>
 
       {totalPlanned === 0 ? (
         <p className="px-5 py-6 text-sm text-slate">
-          Todavía no hay kilómetros planificados. Añade los km estimados a las sesiones y aquí verás el volumen de cada semana.
+          {t('wv.empty')}
         </p>
       ) : (
         <div className="p-4">
@@ -88,12 +88,12 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
                     height={Math.max(0, m.t + innerH - y(r.done))}
                     fill={COLORS.done}
                   >
-                    <title>{`Semana ${r.week}: ${Math.round(r.done * 10) / 10} km completados`}</title>
+                    <title>{t('wv.tipDone', { n: r.week, km: Math.round(r.done * 10) / 10 })}</title>
                   </rect>
                 )}
                 {i % labelEvery === 0 && (
                   <text x={x(i)} y={H - m.b + 16} textAnchor="middle" fontSize="10" fill={COLORS.axis}>
-                    S{r.week}
+                    {t('wv.weekShort')}{r.week}
                   </text>
                 )}
               </g>
@@ -108,7 +108,7 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
             {data.map((r, i) => (
               <g key={`p${r.week}`}>
                 <circle cx={x(i)} cy={y(r.planned)} r="3.5" fill={COLORS.planned}>
-                  <title>{`Semana ${r.week}: ${Math.round(r.planned * 10) / 10} km planificados`}</title>
+                  <title>{t('wv.tipPlanned', { n: r.week, km: Math.round(r.planned * 10) / 10 })}</title>
                 </circle>
                 {showValues && r.planned > 0 && (
                   <text x={x(i)} y={y(r.planned) - 8} textAnchor="middle" fontSize="10" fill={COLORS.planned}>
@@ -120,10 +120,10 @@ export default function WeeklyVolumeChart({ sessions, totalWeeks }) {
           </svg>
           <div className="flex flex-wrap gap-5 mt-2 text-xs text-slate font-mono">
             <span className="flex items-center gap-2">
-              <span className="inline-block w-5 h-0.5" style={{ background: COLORS.planned }} /> Km planificados
+              <span className="inline-block w-5 h-0.5" style={{ background: COLORS.planned }} /> {t('wv.planned')}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3" style={{ background: COLORS.done }} /> Km completados
+              <span className="inline-block w-3 h-3" style={{ background: COLORS.done }} /> {t('wv.done')}
             </span>
           </div>
         </div>

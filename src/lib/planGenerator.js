@@ -23,7 +23,17 @@ export const SESSION_TYPES_SUGGESTED = [
   'Descanso',
 ]
 
-export function generatePlanSkeleton(totalWeeks, sessionsPerWeek = 3) {
+// Tipos de sesión sugeridos (lista desplegable) en el idioma activo.
+// t = función de traducción; sin ella devuelve la lista en castellano.
+const SESSION_TYPE_KEYS = ['easy', 'progressive', 'variable', 'long', 'intervals', 'hills', 'activation', 'race', 'rest']
+export function suggestedSessionTypes(t) {
+  return t ? SESSION_TYPE_KEYS.map((k) => t(`st.${k}`)) : SESSION_TYPES_SUGGESTED
+}
+
+// t = función de traducción (opcional): con ella los nombres, enfoques y objetivos de los
+// mesociclos y de la sesión de carrera se generan en el idioma activo.
+export function generatePlanSkeleton(totalWeeks, sessionsPerWeek = 3, t = null) {
+  const tx = (key, fallback) => (t ? t(key) : fallback)
   const weeks = Math.max(1, Math.round(totalWeeks))
 
   const meso3Weeks = Math.min(weeks, Math.max(2, Math.round(weeks * 0.2)))
@@ -37,11 +47,11 @@ export function generatePlanSkeleton(totalWeeks, sessionsPerWeek = 3) {
   if (meso1Weeks > 0) {
     mesocycles.push({
       order_index: 1,
-      name: 'Mesociclo 1 · Base Aeróbica',
+      name: tx('pg.m1.name', 'Mesociclo 1 · Base Aeróbica'),
       week_start: cursor,
       week_end: cursor + meso1Weeks - 1,
-      focus: 'Adaptación aeróbica y construcción de base',
-      key_objective: 'Establecer volumen y consolidar la técnica de carrera',
+      focus: tx('pg.m1.focus', 'Adaptación aeróbica y construcción de base'),
+      key_objective: tx('pg.m1.obj', 'Establecer volumen y consolidar la técnica de carrera'),
     })
     cursor += meso1Weeks
   }
@@ -49,22 +59,22 @@ export function generatePlanSkeleton(totalWeeks, sessionsPerWeek = 3) {
   if (meso2Weeks > 0) {
     mesocycles.push({
       order_index: mesocycles.length + 1,
-      name: 'Mesociclo 2 · Desarrollo Específico',
+      name: tx('pg.m2.name', 'Mesociclo 2 · Desarrollo Específico'),
       week_start: cursor,
       week_end: cursor + meso2Weeks - 1,
-      focus: 'Series de calidad al ritmo objetivo y resistencia al ritmo',
-      key_objective: 'Consolidar la velocidad específica de la prueba',
+      focus: tx('pg.m2.focus', 'Series de calidad al ritmo objetivo y resistencia al ritmo'),
+      key_objective: tx('pg.m2.obj', 'Consolidar la velocidad específica de la prueba'),
     })
     cursor += meso2Weeks
   }
 
   mesocycles.push({
     order_index: mesocycles.length + 1,
-    name: 'Mesociclo 3 · Afinado y Competición',
+    name: tx('pg.m3.name', 'Mesociclo 3 · Afinado y Competición'),
     week_start: cursor,
     week_end: cursor + meso3Weeks - 1,
-    focus: 'Reducción de volumen, mantenimiento de intensidad',
-    key_objective: 'Llegar fresco y afilado al día de la prueba',
+    focus: tx('pg.m3.focus', 'Reducción de volumen, mantenimiento de intensidad'),
+    key_objective: tx('pg.m3.obj', 'Llegar fresco y afilado al día de la prueba'),
   })
 
   const sessions = []
@@ -76,8 +86,8 @@ export function generatePlanSkeleton(totalWeeks, sessionsPerWeek = 3) {
         week_number: week,
         day_number: day,
         mesocycle_order: meso ? meso.order_index : null,
-        session_type: isRaceDay ? 'Día de Carrera' : '',
-        description: isRaceDay ? 'Por definir — día de la prueba objetivo' : '',
+        session_type: isRaceDay ? tx('st.race', 'Día de Carrera') : '',
+        description: isRaceDay ? tx('pg.raceDesc', 'Por definir — día de la prueba objetivo') : '',
         km_estimated: null,
         rpe_theoretical: '',
         status: 'pendiente',

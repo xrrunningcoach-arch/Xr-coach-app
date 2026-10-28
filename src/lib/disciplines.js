@@ -29,3 +29,5 @@ function localized(key, fallback) {
 }
 export const disciplineName = (d) => (d ? localized(`disc.name.${d.code}`, d.name) : '')
 export const fieldLabel = (f) => localized(`disc.field.${f.key}`, f.label)
+// Nombre de la prueba del catálogo (5K, 10K, Media maratón, Maratón) en el idioma activo.
+export const raceName = (r) => (!r ? '' : r.name === 'Media maratón' ? localized('race.half', r.name) : r.name === 'Maratón' ? localized('race.marathon', r.name) : r.name)

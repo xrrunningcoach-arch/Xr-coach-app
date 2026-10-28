@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import CalendarToolbar from './calendar/CalendarToolbar'
 import MonthGrid from './calendar/MonthGrid'
@@ -27,10 +27,12 @@ import {
   weekRangeTitle,
 } from '../lib/dates'
 import { ui } from '../ui/ui'
+import { useT } from '../i18n'
+import { raceName } from '../lib/disciplines'
 
 const VIEWS = [
-  { id: 'week', label: 'Semana' },
-  { id: 'month', label: 'Mes' },
+  { id: 'week', key: 'cal.week' },
+  { id: 'month', key: 'cal.month' },
 ]
 
 function sortSessions(list) {
@@ -43,17 +45,28 @@ function sortSessions(list) {
 // el atleta, pero editable: "+" crea una sesión en ese día, arrastrar una
 // sesión a otro día la mueve, y pulsar una sesión abre su editor completo.
 // Todo lo que se coloca aquí aparece en el calendario del atleta.
-export default function CoachCalendar({ athlete, plan, sessions, mesocycles, disciplines, milestones, onReload, onSaveSessionToLibrary }) {
+export default function CoachCalendar({ athlete, plan, sessions, mesocycles, disciplines, milestones, onReload, onSaveSessionToLibrary, focusDate = null, focusKey = null, onShowInPlan }) {
+  const t = useT()
   const today = useToday()
   const [view, setView] = useState('week')
-  const [cursor, setCursor] = useState(() => today)
-  const [selectedDay, setSelectedDay] = useState(null)
+  const [cursor, setCursor] = useState(() => focusDate || today)
+  const [selectedDay, setSelectedDay] = useState(() => focusDate || null)
   const [selectedId, setSelectedId] = useState(null)
   const [dragId, setDragId] = useState(null)
   const [overDay, setOverDay] = useState(null)
   const [busy, setBusy] = useState(false)
   const [importing, setImporting] = useState(false)
   const [startInput, setStartInput] = useState('')
+
+  // Llegar desde «Ver en el calendario» (Plan y sesiones): se abre esa semana.
+  useEffect(() => {
+    if (focusKey && focusDate) {
+      setView('week')
+      setCursor(focusDate)
+      setSelectedDay(focusDate)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey])
 
   const planStart = plan?.start_date || null
 
@@ -82,30 +95,30 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
     if (plan?.race_date) {
       const key = String(plan.race_date).slice(0, 10)
       if (!map.has(key)) map.set(key, [])
-      map.get(key).push({ id: 'race', title: plan.races?.name || plan.custom_race_name || 'Prueba', kind: 'prueba' })
+      map.get(key).push({ id: 'race', title: raceName(plan.races) || plan.custom_race_name || t('cal.event.race'), kind: 'prueba' })
     }
     return map
   }, [milestones, plan])
 
-  if (!plan) return <p className="text-sm text-slate">Crea primero un plan en la pestaña «Plan y sesiones».</p>
+  if (!plan) return <p className="text-sm text-slate">{t('ed.needPlan')}</p>
 
   // ---- Plan sin fecha de inicio: sin ella no se puede colocar nada ----
   if (!planStart) {
     return (
       <div className="bg-surface border border-mist rounded-sm p-6 space-y-3 max-w-xl">
-        <h2 className="font-display text-xl text-navy">Falta la fecha de inicio del plan</h2>
+        <h2 className="font-display text-xl text-navy">{t('cc.missingStartTitle')}</h2>
         <p className="text-sm text-slate">
-          El calendario necesita saber cuándo empieza la semana 1 para colocar las sesiones en sus días. Si el plan ya tiene sesiones, se colocarán según su semana y su «Día N» (Día 1 = lunes).
+          {t('cc.missingStartBody')}
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <input type="date" value={startInput} onChange={(e) => setStartInput(e.target.value)} className="border border-mist rounded-sm px-3 py-2 text-sm" aria-label="Fecha de inicio del plan" />
+          <input type="date" value={startInput} onChange={(e) => setStartInput(e.target.value)} className="border border-mist rounded-sm px-3 py-2 text-sm" aria-label={t('cc.startAria')} />
           <button
             type="button"
             disabled={!startInput || busy}
             onClick={() => setPlanStart(startInput)}
             className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-sm disabled:opacity-60"
           >
-            Fijar inicio y colocar sesiones
+            {t('cc.setStart')}
           </button>
         </div>
       </div>
@@ -185,7 +198,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
     const s = sessions.find((x) => x.id === sessionId)
     if (!s || s.session_date === iso) return
     if (weekNumberFor(iso, planStart) < 1) {
-      ui.error(`Esa fecha es anterior al inicio del plan (${planStart}).`)
+      ui.error(t('cc.beforeStart', { date: planStart }))
       return
     }
     setBusy(true)
@@ -218,9 +231,9 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
   const meso = cycleForDate(mesocycles, view === 'week' ? addDays(weekMonday, 3) : today, planStart)
   const subtitle =
     view === 'week'
-      ? [planWeek >= 1 ? `Semana ${planWeek} del plan` : null, meso?.name].filter(Boolean).join(' · ')
+      ? [planWeek >= 1 ? t('cal.weekOfPlan', { n: planWeek }) : null, meso?.name].filter(Boolean).join(' · ')
       : meso
-        ? `Ahora: ${meso.name}`
+        ? t('cal.now', { name: meso.name })
         : ''
 
   // ---- arrastrar y soltar ----
@@ -276,8 +289,8 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
         e.stopPropagation()
         addSession(iso)
       }}
-      aria-label={`Añadir sesión el ${longDayTitle(iso)}`}
-      title="Añadir sesión"
+      aria-label={t('cc.addSessionOn', { day: longDayTitle(iso) })}
+      title={t('cc.addSession')}
       className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-slate hover:bg-primary hover:text-white opacity-60 hover:opacity-100 focus:opacity-100 transition-colors disabled:opacity-30"
     >
       <IconPlus width={14} height={14} />
@@ -287,7 +300,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
   const eventTags = (iso) =>
     (eventsByDate.get(iso) || []).map((ev) => (
       <span key={ev.id} title={ev.title} className="inline-block max-w-full truncate rounded-sm bg-red/10 text-red-deep px-1.5 py-0.5 font-mono text-[10px]">
-        {ev.kind === 'prueba' ? 'Prueba' : 'Hito'}: {ev.title}
+        {ev.kind === 'prueba' ? t('cal.event.race') : t('cal.event.milestone')}: {ev.title}
       </span>
     ))
 
@@ -356,7 +369,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
                   }}
                   className="font-mono text-[10px] text-slate hover:text-red text-left"
                 >
-                  +{list.length - shown.length} más
+                  {t('cal.more', { n: list.length - shown.length })}
                 </button>
               )}
             </>
@@ -384,19 +397,19 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
             onClick={() => setImporting(true)}
             className="px-3 py-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm"
           >
-            Aplicar de la biblioteca
+            {t('ed.applyLibrary')}
           </button>
         }
       />
 
       <p className="text-xs text-slate">
-        Pulsa «+» para crear una sesión en ese día, arrastra una sesión a otro día para moverla y pulsa una sesión para editarla. Los cambios se ven al instante en el calendario de {athlete.full_name || 'tu atleta'}.
+        {t('cc.hint', { name: athlete.full_name || t('cc.yourAthlete') })}
       </p>
 
       {undated.length > 0 && (
         <div className="bg-surface border border-mist rounded-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm">
-            <strong>{undated.length}</strong> {undated.length === 1 ? 'sesión no tiene' : 'sesiones no tienen'} día asignado y el atleta las ve en «Sin día asignado».
+            {t('ed.undated', { count: undated.length })}
           </p>
           <button
             type="button"
@@ -404,7 +417,7 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
             onClick={handlePlaceUndated}
             className="px-3 py-2 text-xs font-semibold bg-primary hover:bg-primary-hover text-white rounded-sm disabled:opacity-60"
           >
-            Colocar según su semana y día
+            {t('ed.placeUndated')}
           </button>
         </div>
       )}
@@ -415,11 +428,18 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
         <div className="bg-surface border-2 border-navy rounded-sm">
           <div className="px-5 py-3 bg-bg-dim flex items-center justify-between gap-3">
             <h3 className="font-display text-lg text-navy">
-              {selected.session_date ? longDayTitle(selected.session_date) : 'Sesión sin día asignado'}
+              {selected.session_date ? longDayTitle(selected.session_date) : t('cc.sessionNoDay')}
             </h3>
-            <button type="button" onClick={() => setSelectedId(null)} className="text-xs font-semibold text-slate hover:text-red">
-              Cerrar
-            </button>
+            <span className="flex items-center gap-4">
+              {onShowInPlan && (
+                <button type="button" onClick={onShowInPlan} className="text-xs font-semibold text-navy hover:text-red">
+                  {t('ed.viewInPlan')}
+                </button>
+              )}
+              <button type="button" onClick={() => setSelectedId(null)} className="text-xs font-semibold text-slate hover:text-red">
+                {t('common.close')}
+              </button>
+            </span>
           </div>
           <CoachSessionRow
             key={selected.id + (selected.updated_at || '')}
@@ -435,16 +455,16 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
         undated.length > 0 && (
           <div className="bg-surface border border-mist rounded-sm">
             <div className="px-5 py-3 bg-bg-dim">
-              <h3 className="font-display text-lg text-navy">Sin día asignado</h3>
+              <h3 className="font-display text-lg text-navy">{t('cal.undated')}</h3>
             </div>
             <ul className="divide-y divide-mist">
               {undated.map((s) => (
                 <li key={s.id} className="px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
                   <span>
-                    Semana {s.week_number} · Día {s.day_number} · <strong>{s.session_type || 'Sin tipo'}</strong>
+                    {t('cc.weekDay', { w: s.week_number, d: s.day_number })} · <strong>{s.session_type || t('cc.noType')}</strong>
                   </span>
                   <button type="button" onClick={() => setSelectedId(s.id)} className="text-xs font-semibold text-navy hover:text-red">
-                    Editar y asignar fecha
+                    {t('cc.editAssign')}
                   </button>
                 </li>
               ))}

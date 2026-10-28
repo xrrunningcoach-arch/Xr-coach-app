@@ -18,20 +18,20 @@ export default function ProtectedRoute({ role, children }) {
       <div className="min-h-screen flex items-center justify-center bg-bg px-5">
         <div className="max-w-sm text-center space-y-4">
           <p className="text-sm text-red" role="alert">
-            {authError || 'No se ha podido cargar tu perfil.'}
+            {authError || t('pr.loadError')}
           </p>
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={refreshProfile}
               className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-sm"
             >
-              Reintentar
+              {t('pr.retry')}
             </button>
             <button
               onClick={signOut}
               className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red"
             >
-              Salir
+              {t('common.signOut')}
             </button>
           </div>
         </div>
@@ -45,13 +45,13 @@ export default function ProtectedRoute({ role, children }) {
       <div className="min-h-screen flex items-center justify-center bg-bg px-5">
         <div className="max-w-sm text-center space-y-4">
           <p className="text-sm text-navy" role="status">
-            Tu cuenta está en pausa. Habla con tu entrenador para que la reactive.
+            {t('pr.paused')}
           </p>
           <button
             onClick={signOut}
             className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red"
           >
-            Salir
+            {t('common.signOut')}
           </button>
         </div>
       </div>

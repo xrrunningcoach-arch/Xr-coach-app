@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
-import { SESSION_TYPES_SUGGESTED } from '../lib/planGenerator'
+import { suggestedSessionTypes } from '../lib/planGenerator'
 import { toSafeHref } from '../lib/safeUrl'
 import { disciplineName, findDiscipline } from '../lib/disciplines'
 import { placementFor } from '../lib/dates'
@@ -11,12 +11,14 @@ import CoachStatusControl from './CoachStatusControl'
 import DisciplineFields from './DisciplineFields'
 import StrengthExercises from './StrengthExercises'
 import { ui } from '../ui/ui'
+import { useT } from '../i18n'
 
 // Fila de edición de una sesión (vista del entrenador). Movida desde
 // CoachAthlete.jsx para poder usarla también desde el calendario; añade el
 // campo «Fecha» (la que coloca la tarjeta en el calendario del atleta) y el
 // botón «Guardar en biblioteca».
 export default function CoachSessionRow({ session, disciplines, mesocycles = [], planStart = null, onChanged, onSaveToLibrary }) {
+  const t = useT()
   const [type, setType] = useState(session.session_type || '')
   const [description, setDescription] = useState(session.description || '')
   const [km, setKm] = useState(session.km_estimated ?? '')
@@ -63,7 +65,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
   }
 
   async function handleDelete() {
-    if (!(await ui.confirm('¿Eliminar esta sesión?', { danger: true, confirmLabel: 'Eliminar' }))) return
+    if (!(await ui.confirm(t('csr.confirmDelete'), { danger: true, confirmLabel: t('c.delete') }))) return
     const { error } = await supabase.from('sessions').delete().eq('id', session.id)
     if (error) ui.error(error.message)
     else onChanged()
@@ -86,13 +88,13 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
   return (
     <div className="px-5 py-4">
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <span className="font-mono text-xs text-slate">Día {session.day_number}</span>
+        <span className="font-mono text-xs text-slate">{t('common.day', { n: session.day_number })}</span>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          aria-label="Fecha de la sesión en el calendario"
-          title="Fecha en el calendario del atleta"
+          aria-label={t('csr.dateAria')}
+          title={t('csr.dateTitle')}
           className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
         />
         <select
@@ -100,7 +102,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           onChange={(e) => setDisciplineId(e.target.value)}
           className="border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
         >
-          <option value="">Disciplina…</option>
+          <option value="">{t('csr.discipline')}</option>
           {disciplines.map((d) => (
             <option key={d.id} value={d.id}>{disciplineName(d)}</option>
           ))}
@@ -109,12 +111,12 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           type="number"
           value={durationPlanned}
           onChange={(e) => setDurationPlanned(e.target.value)}
-          placeholder="Duración prevista (min)"
+          placeholder={t('csr.durationPh')}
           className="w-44 border border-mist rounded-sm px-2 py-1.5 text-sm"
         />
         {session.session_load != null && (
           <span className="font-mono text-[11px] text-navy-light ml-auto">
-            Carga: {Math.round(session.session_load)} · Impacto: {Math.round(session.impact_load)}
+            {t('csr.load', { load: Math.round(session.session_load), impact: Math.round(session.impact_load) })}
           </span>
         )}
       </div>
@@ -136,11 +138,11 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
             list="session-types"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            placeholder="Tipo de sesión"
+            placeholder={t('csr.typePh')}
             className="w-full border border-mist rounded-sm px-3 py-2 text-sm"
           />
           <datalist id="session-types">
-            {SESSION_TYPES_SUGGESTED.map((t) => <option key={t} value={t} />)}
+            {suggestedSessionTypes(t).map((ty) => <option key={ty} value={ty} />)}
           </datalist>
         </div>
 
@@ -148,7 +150,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción del entrenamiento"
+            placeholder={t('csr.descPh')}
             rows={2}
             className="w-full border border-mist rounded-sm px-3 py-2 text-sm resize-none"
           />
@@ -180,15 +182,15 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
             disabled={saving}
             className="text-xs font-semibold text-white bg-primary hover:bg-primary-hover px-3 py-1.5 rounded-sm disabled:opacity-60 w-full sm:w-auto"
           >
-            {saving ? 'Guardando…' : 'Guardar'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
           {onSaveToLibrary && (
             <button type="button" onClick={() => onSaveToLibrary(session)} className="text-xs font-semibold text-navy hover:text-red">
-              A la biblioteca
+              {t('csr.toLibrary')}
             </button>
           )}
           <button onClick={handleDelete} className="text-xs text-red hover:text-red-deep">
-            Eliminar
+            {t('c.delete')}
           </button>
         </div>
       </div>
@@ -196,15 +198,15 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
       <div className="mt-2 flex flex-wrap items-center gap-3 pl-0 sm:pl-[calc(8.3%)]">
         <StatusBadge status={session.status} />
         <CoachStatusControl session={session} onChanged={onChanged} />
-        {session.rpe_actual && <span className="text-xs font-mono text-slate">RPE real: {session.rpe_actual}</span>}
+        {session.rpe_actual && <span className="text-xs font-mono text-slate">{t('coach.rpeReal', { v: session.rpe_actual })}</span>}
         {toSafeHref(session.link_url) && (
           <a href={toSafeHref(session.link_url)} target="_blank" rel="noreferrer" className="text-xs text-navy underline underline-offset-2">
-            Ver entrenamiento
+            {t('csr.viewTraining')}
           </a>
         )}
         {session.athlete_notes && <span className="text-xs text-slate italic">"{session.athlete_notes}"</span>}
         <button onClick={toggleEval} className="text-xs font-semibold text-red hover:text-red-deep ml-auto">
-          {showEval ? 'Ocultar valoración' : 'Valorar sesión'}
+          {showEval ? t('csr.hideEval') : t('csr.eval')}
         </button>
       </div>
 
@@ -214,6 +216,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
 }
 
 export function EvaluationBox({ sessionId, evaluations, onAdded }) {
+  const t = useT()
   const { user } = useAuth()
   const [rating, setRating] = useState(3)
   const [comment, setComment] = useState('')
@@ -239,9 +242,9 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
   return (
     <div className="mt-3 bg-bg-dim rounded-sm p-4 space-y-3">
       {evaluations === null ? (
-        <p className="text-xs text-slate">Cargando valoraciones…</p>
+        <p className="text-xs text-slate">{t('csr.loadingEvals')}</p>
       ) : evaluations.length === 0 ? (
-        <p className="text-xs text-slate">Todavía no has valorado esta sesión.</p>
+        <p className="text-xs text-slate">{t('csr.noEvals')}</p>
       ) : (
         <div className="space-y-2">
           {evaluations.map((ev) => (
@@ -260,7 +263,7 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
         <input
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Comentario para el atleta…"
+          placeholder={t('csr.commentPh')}
           className="flex-1 min-w-[180px] border border-mist rounded-sm px-3 py-1.5 text-sm"
         />
         <button
@@ -268,7 +271,7 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
           disabled={saving || !comment}
           className="text-xs font-semibold text-white bg-brand hover:bg-brand-deep px-3 py-1.5 rounded-sm disabled:opacity-60"
         >
-          Añadir valoración
+          {t('csr.addEval')}
         </button>
       </div>
     </div>

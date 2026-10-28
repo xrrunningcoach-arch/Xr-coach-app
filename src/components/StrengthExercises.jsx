@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { ui } from '../ui/ui'
+import { useT } from '../i18n'
 
 // Fuerza se modela como tabla relacional (session_exercises) y no como
 // metrics jsonb, porque es estructuralmente repetitiva (series x reps x
 // carga) y conviene poder sumarla/consultarla como filas, no como texto.
 export default function StrengthExercises({ sessionId }) {
+  const t = useT()
   const [exercises, setExercises] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -57,7 +59,7 @@ export default function StrengthExercises({ sessionId }) {
     else load()
   }
 
-  if (exercises === null) return <p className="text-xs text-slate">Cargando ejercicios…</p>
+  if (exercises === null) return <p className="text-xs text-slate">{t('ex.loading')}</p>
 
   return (
     <div className="space-y-2">
@@ -70,13 +72,14 @@ export default function StrengthExercises({ sessionId }) {
         disabled={saving}
         className="text-xs font-semibold text-navy hover:text-red disabled:opacity-60"
       >
-        + Añadir ejercicio
+        {t('ex.add')}
       </button>
     </div>
   )
 }
 
 function ExerciseRow({ exercise, onSave, onDelete }) {
+  const t = useT()
   const [name, setName] = useState(exercise.exercise_name || '')
   const [sets, setSets] = useState(exercise.sets ?? '')
   const [reps, setReps] = useState(exercise.reps ?? '')
@@ -99,7 +102,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={handleBlur}
-        placeholder="Ejercicio (ej. Sentadilla trasera)"
+        placeholder={t('ex.namePh')}
         className="col-span-5 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input
@@ -107,7 +110,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         value={sets}
         onChange={(e) => setSets(e.target.value)}
         onBlur={handleBlur}
-        placeholder="Series"
+        placeholder={t('ex.sets')}
         className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input
@@ -115,7 +118,7 @@ function ExerciseRow({ exercise, onSave, onDelete }) {
         value={reps}
         onChange={(e) => setReps(e.target.value)}
         onBlur={handleBlur}
-        placeholder="Reps"
+        placeholder={t('ex.reps')}
         className="col-span-2 border border-mist rounded-sm px-2 py-1.5 text-sm bg-surface"
       />
       <input

@@ -3,7 +3,6 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthProvider'
 import { useT } from '../i18n'
 import AthleteDashboard from './AthleteDashboard'
-import AthleteProfileForm from './AthleteProfileForm'
 import AnamnesisForm from '../components/AnamnesisForm'
 import CoachChooser from '../components/CoachChooser'
 import DataExport from '../components/DataExport'
@@ -69,14 +68,12 @@ export default function AthleteHome() {
         </div>
 
         {section === 'perfil' && (
-          <div className="space-y-6">
-            <CoachChooser />
-            <AthleteProfileForm />
-            <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">
-              <h2 className="font-display text-xl text-navy">{t('profile.anamnesisTitle')}</h2>
-              <AnamnesisForm athleteId={user.id} basicProfile={profile} />
+          <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">
+            <div>
+              <h2 className="font-display text-xl text-navy">{t('nav.profile')}</h2>
+              <p className="text-sm text-slate mt-1">{t('profile.autoNote')}</p>
             </div>
-            <DataExport />
+            <AnamnesisForm athleteId={user.id} basicProfile={profile} />
           </div>
         )}
 

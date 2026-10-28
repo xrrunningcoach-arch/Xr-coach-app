@@ -27,3 +27,66 @@ export const ANAMNESIS_QUESTIONS = [
   { n: 20, es: '¿Conoce el método RPE (escala de esfuerzo 1-10)?', eu: 'Ezagutzen al duzu RPE (Ahalegin Pertzepzioaren Eskala 1etik 10era) metodoa?', type: 'short' },
   { n: 21, es: 'Otras notas o información adicional para el entrenador', eu: 'Bestelako oharrak edo entrenatzaileari helarazi nahi diozun informazio plusa', type: 'long' },
 ]
+
+// ---------------------------------------------------------------------------
+// De la anamnesis al perfil: al guardar el cuestionario se rellenan solos los
+// campos del perfil del atleta (tabla athlete_profiles) y su nombre y edad.
+// Solo se tocan los campos cuyas preguntas tienen respuesta.
+// ---------------------------------------------------------------------------
+
+// Etiqueta corta de cada pregunta cuando se agrupan varias en un mismo campo.
+const SHORT = {
+  5: { es: 'Tiempo corriendo', eu: 'Korrikan daraman denbora' },
+  7: { es: 'Días de entreno/semana', eu: 'Entrenamendu egunak/astean' },
+  8: { es: 'Km/semana', eu: 'Km/astean' },
+  10: { es: 'Molestia actual', eu: 'Egungo molestia' },
+  11: { es: 'Lesión en los últimos 2 años', eu: 'Azken 2 urteetako lesioa' },
+  12: { es: 'Otros factores de salud', eu: 'Bestelako osasun-faktoreak' },
+  13: { es: 'Días disponibles para correr', eu: 'Korrika egiteko egun eskuragarriak' },
+  14: { es: 'Días para tiradas largas', eu: 'Saio luzeetarako egunak' },
+  15: { es: 'Trabajo/estudios y fatiga', eu: 'Lana/ikasketak eta nekea' },
+  16: { es: 'Recursos', eu: 'Baliabideak' },
+  17: { es: 'Reloj o dispositivo', eu: 'Erlojua edo gailua' },
+  18: { es: 'Strava / Garmin', eu: 'Strava / Garmin' },
+  19: { es: 'Cómo entrena', eu: 'Nola entrenatzen duen' },
+  20: { es: 'Conoce el RPE', eu: 'RPE ezagutzen du' },
+}
+
+// campo del perfil -> preguntas que lo alimentan (en este orden)
+export const PROFILE_FIELD_SOURCES = {
+  main_goal: [3],
+  long_term_goal: [4],
+  sport_history: [5, 7, 8],
+  personal_bests: [6],
+  weekly_run_frequency: [13, 14],
+  weekly_strength_frequency: [9],
+  injury_history: [10, 11, 12],
+  resources: [16, 17, 18],
+  load_control: [15, 19, 20],
+  notes: [21],
+}
+
+const clean = (v) => String(v ?? '').trim()
+
+// answers = { "1": "...", "3": "...", ... } · lang = 'es' | 'eu'
+// Devuelve { profile, basic }: los campos de athlete_profiles y de profiles
+// (full_name, age) que se pueden rellenar con lo respondido.
+export function profileFromAnamnesis(answers, lang = 'es') {
+  const l = lang === 'eu' ? 'eu' : 'es'
+  const a = answers || {}
+  const profile = {}
+  Object.entries(PROFILE_FIELD_SOURCES).forEach(([field, nums]) => {
+    const answered = nums.filter((n) => clean(a[n]) !== '')
+    if (answered.length === 0) return
+    // Un solo origen sin etiqueta -> texto tal cual; varios -> «Etiqueta: respuesta» por línea.
+    profile[field] =
+      nums.length === 1
+        ? clean(a[nums[0]])
+        : answered.map((n) => `${SHORT[n]?.[l] ?? n}: ${clean(a[n])}`).join('\n')
+  })
+  const basic = {}
+  if (clean(a[1]) !== '') basic.full_name = clean(a[1])
+  const age = clean(a[2]).match(/\d{1,3}/)
+  if (age && Number(age[0]) >= 5 && Number(age[0]) <= 110) basic.age = Number(age[0])
+  return { profile, basic }
+}

@@ -7,7 +7,7 @@ import { hrvTrend } from '../lib/hrv'
 const fmtPace = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /km` : '—')
 
 // Último test de umbrales (solo lectura) + registro y tendencia de HRV del atleta.
-export default function ThresholdsPanel({ test, hrv, athleteId, today, onChanged }) {
+export default function ThresholdsPanel({ test, hrv, athleteId, today, showTest = true, onChanged }) {
   const t = useT()
   const [date, setDate] = useState(today)
   const [rmssd, setRmssd] = useState('')
@@ -38,7 +38,8 @@ export default function ThresholdsPanel({ test, hrv, athleteId, today, onChanged
   const input = 'w-full border border-mist rounded-sm px-3 py-2 bg-surface text-sm'
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className={showTest ? 'grid md:grid-cols-2 gap-4' : ''}>
+      {showTest && (
       <div className="bg-surface border border-mist rounded-sm p-5 space-y-3">
         <h3 className="font-display text-lg text-navy">{t('thr.title')}</h3>
         {test ? (
@@ -55,6 +56,7 @@ export default function ThresholdsPanel({ test, hrv, athleteId, today, onChanged
           <p className="text-sm text-slate">{t('thr.none')}</p>
         )}
       </div>
+      )}
 
       <div className="bg-surface border border-mist rounded-sm p-5 space-y-3">
         <h3 className="font-display text-lg text-navy">{t('hrv.title')}</h3>

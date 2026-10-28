@@ -1,5 +1,6 @@
 // Escritura en Supabase de una plantilla aplicada al calendario de un atleta.
 import { supabase } from '../supabaseClient'
+import { dateForWeekday } from './dates'
 import { applicationToRpc, buildApplication } from './templates'
 
 async function loadPlanContext(athleteId) {
@@ -30,7 +31,10 @@ export async function previewApplication({ item, athleteId, startDate, disciplin
 // apply_template_application, migración 0005): o se crea todo o no se crea nada.
 export async function applyTemplateToAthlete({ item, athleteId, startDate, disciplines, macroChoice }) {
   const preview = await previewApplication({ item, athleteId, startDate, disciplines, macroChoice })
-  if (preview.errors.length) throw new Error(preview.errors[0])
+  if (preview.errors.length) {
+    // El error lleva la clave de traducción: la pantalla lo muestra en el idioma activo.
+    throw Object.assign(new Error(preview.errors[0].key), { i18n: preview.errors[0] })
+  }
 
   const { data, error } = await supabase.rpc('apply_template_application', {
     p_athlete_id: athleteId,
@@ -59,7 +63,8 @@ export async function fetchExercisesBySession(sessionIds) {
   return grouped
 }
 
-export async function saveLibraryItem({ id, coachId, kind, name, description, tags, payload }) {
+// folderId: undefined = no cambia la carpeta · null = sin carpeta · uuid = esa carpeta
+export async function saveLibraryItem({ id, coachId, kind, name, description, tags, payload, folderId }) {
   const row = {
     coach_id: coachId,
     kind,
@@ -69,10 +74,59 @@ export async function saveLibraryItem({ id, coachId, kind, name, description, ta
     payload,
     updated_at: new Date().toISOString(),
   }
+  if (folderId !== undefined) row.folder_id = folderId || null
   const query = id
     ? supabase.from('library_items').update(row).eq('id', id)
     : supabase.from('library_items').insert(row)
   const { data, error } = await query.select().single()
   if (error) throw new Error(error.message)
   return data
+}
+
+// ---------------------------------------------------------------------------
+// Carpetas de la biblioteca (migración 0011)
+// ---------------------------------------------------------------------------
+export async function fetchFolders() {
+  const { data, error } = await supabase.from('library_folders').select('*').order('name')
+  if (error) return { folders: [], available: false }
+  return { folders: data || [], available: true }
+}
+
+export async function createFolder(coachId, name) {
+  const { data, error } = await supabase
+    .from('library_folders')
+    .insert({ coach_id: coachId, name: String(name).trim() })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function renameFolder(id, name) {
+  const { error } = await supabase.from('library_folders').update({ name: String(name).trim() }).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteFolder(id) {
+  const { error } = await supabase.from('library_folders').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function moveItemToFolder(itemId, folderId) {
+  const { error } = await supabase.from('library_items').update({ folder_id: folderId || null }).eq('id', itemId)
+  if (error) throw error
+}
+
+// Sesiones sin fecha -> fecha según su semana y «Día N» (Día 1 = lunes). Devuelve el error o null.
+export async function placeUndatedSessions(sessions, startISO) {
+  const targets = sessions.filter((s) => !s.session_date)
+  const results = await Promise.all(
+    targets.map((s) =>
+      supabase
+        .from('sessions')
+        .update({ session_date: dateForWeekday(startISO, Math.max(1, s.week_number), Math.min(6, Math.max(0, (s.day_number || 1) - 1))) })
+        .eq('id', s.id)
+    )
+  )
+  return results.find((r) => r.error)?.error || null
 }
