@@ -5,6 +5,7 @@ import BrandMark from './BrandMark'
 import { LangSwitch, ThemeToggle } from './ThemeLangControls'
 import Sidebar from './Sidebar'
 import { IconLibrary, IconUsers } from './icons'
+import { IconMapPin } from './icons-social'
 
 // wide = true: contenedor más ancho (vista del atleta con panel lateral y
 // Biblioteca del entrenador). En móvil, atletas y entrenadores tienen barra
@@ -27,10 +28,15 @@ export default function Layout({ children, wide = false }) {
       items: [
         { id: '/coach', label: t('nav.athletes'), icon: IconUsers, primary: true },
         { id: '/coach/biblioteca', label: t('nav.library'), icon: IconLibrary, primary: true },
+        { id: '/coach/quedadas', label: t('nav.meetups'), icon: IconMapPin, primary: true },
       ],
     },
   ]
-  const coachActive = pathname.startsWith('/coach/biblioteca') ? '/coach/biblioteca' : '/coach'
+  const coachActive = pathname.startsWith('/coach/biblioteca')
+    ? '/coach/biblioteca'
+    : pathname.startsWith('/coach/quedadas')
+      ? '/coach/quedadas'
+      : '/coach'
 
   async function handleSignOut() {
     await signOut()

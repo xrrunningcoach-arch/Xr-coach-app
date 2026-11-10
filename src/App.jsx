@@ -15,6 +15,7 @@ import AthleteHome from './pages/AthleteHome'
 import CoachHome from './pages/CoachHome'
 import CoachAthlete from './pages/CoachAthlete'
 import CoachLibrary from './pages/CoachLibrary'
+import CoachQuedadas from './pages/CoachQuedadas'
 
 function RoleRedirect() {
   const { profile, loading } = useAuth()
@@ -62,6 +63,15 @@ export default function App() {
             element={
               <ProtectedRoute role="coach">
                 <Layout wide><CoachLibrary /></Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/coach/quedadas"
+            element={
+              <ProtectedRoute role="coach">
+                <Layout wide><CoachQuedadas /></Layout>
               </ProtectedRoute>
             }
           />

@@ -8,7 +8,9 @@ import CoachChooser from '../components/CoachChooser'
 import DataExport from '../components/DataExport'
 import ChatPanel from '../components/ChatPanel'
 import Sidebar from '../components/Sidebar'
+import QuedadasView from '../components/quedadas/QuedadasView'
 import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget, IconUser } from '../components/icons'
+import { IconMapPin } from '../components/icons-social'
 
 const PLAN_SECTIONS = ['hoy', 'calendario', 'estadisticas', 'objetivos', 'zonas', 'tests']
 
@@ -41,7 +43,8 @@ export default function AthleteHome() {
       items: [
         { id: 'hoy', label: t('nav.today'), icon: IconHome, primary: true },
         { id: 'calendario', label: t('nav.calendar'), icon: IconCalendar, primary: true },
-        { id: 'estadisticas', label: t('nav.stats'), icon: IconChart, primary: true },
+        { id: 'quedadas', label: t('nav.meetups'), icon: IconMapPin, primary: true },
+        { id: 'estadisticas', label: t('nav.stats'), icon: IconChart },
         { id: 'objetivos', label: t('nav.goals'), icon: IconTarget },
         { id: 'zonas', label: t('nav.zones'), icon: IconHeart },
         { id: 'tests', label: t('nav.tests'), icon: IconFlag },
@@ -66,6 +69,8 @@ export default function AthleteHome() {
         <div className={isPlanSection ? '' : 'hidden'}>
           <AthleteDashboard section={isPlanSection ? section : 'hoy'} onNavigate={setSection} unread={unread} />
         </div>
+
+        {section === 'quedadas' && <QuedadasView />}
 
         {section === 'perfil' && (
           <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">

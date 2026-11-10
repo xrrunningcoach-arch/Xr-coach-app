@@ -1,11 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import es from './es'
-import eu from './eu'
+import esBase from './es'
+import euBase from './eu'
+import esQuedadas from './quedadas.es'
+import euQuedadas from './quedadas.eu'
 import { setDateLang } from '../lib/dates'
 
 // Castellano (es) y euskera (eu). El castellano es el idioma "base": si falta
 // una clave en euskera se muestra la de castellano, y si falta en ambos, la
 // propia clave (así un fallo es visible en pantalla y no rompe nada).
+// Los textos de «Quedadas» viven en sus propios archivos (quedadas.es/eu.js)
+// y aquí se fusionan con los generales.
+const es = { ...esBase, ...esQuedadas }
+const eu = { ...euBase, ...euQuedadas }
+
 export const LANGS = [
   { code: 'es', label: 'Castellano', short: 'ES' },
   { code: 'eu', label: 'Euskara', short: 'EU' },
