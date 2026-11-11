@@ -1,4 +1,4 @@
-// Lecturas y escrituras de las quedadas en Supabase (migración 0012).
+// Lecturas y escrituras de las quedadas en Supabase (migraciones 0012–0013).
 import { supabase } from '../supabaseClient'
 import { RULES_VERSION } from './meetups'
 
@@ -6,9 +6,9 @@ const fail = (error) => {
   throw new Error(error.message)
 }
 
-const looksMissing = (message) => /social_profiles|communities|meetups|relation|schema cache|does not exist/i.test(message || '')
+const looksMissing = (message) => /social_profiles|communities|meetups|list_community_meetups|relation|schema cache|does not exist/i.test(message || '')
 
-// { profile, missing, error }. missing = la migración 0012 no está ejecutada.
+// { profile, missing, error }. missing = falta la migración base 0012.
 export async function fetchSocialProfile(userId) {
   const { data, error } = await supabase
     .from('social_profiles')
@@ -61,49 +61,16 @@ export async function fetchMeetingPoints(communityId) {
   return data || []
 }
 
-// Quedadas desde hace 3 horas en adelante, con sus apuntados (nombre visible).
+// El RPC devuelve solo el punto exacto a quien organiza o ya está apuntado.
 export async function fetchMeetups(communityId) {
-  const since = new Date(Date.now() - 3 * 3600 * 1000).toISOString()
-  const { data, error } = await supabase
-    .from('meetups')
-    .select('*')
-    .eq('community_id', communityId)
-    .gte('starts_at', since)
-    .order('starts_at')
+  const { data, error } = await supabase.rpc('list_community_meetups', { p_community: communityId })
   if (error) fail(error)
-  const list = data || []
-  if (list.length === 0) return []
-
-  const { data: parts, error: pErr } = await supabase
-    .from('meetup_participants')
-    .select('meetup_id, user_id')
-    .in('meetup_id', list.map((m) => m.id))
-  if (pErr) fail(pErr)
-  const participants = parts || []
-
-  const userIds = [...new Set(participants.map((p) => p.user_id))]
-  const names = {}
-  if (userIds.length) {
-    const { data: people, error: sErr } = await supabase.from('social_profiles').select('user_id, display_name').in('user_id', userIds)
-    if (sErr) fail(sErr)
-    ;(people || []).forEach((p) => {
-      names[p.user_id] = p.display_name
-    })
-  }
-
-  return list.map((m) => ({
-    ...m,
-    people: participants
-      .filter((p) => p.meetup_id === m.id)
-      .map((p) => ({ user_id: p.user_id, display_name: names[p.user_id] || '—' })),
-    organizerName: names[m.organizer_id] || '',
-  }))
+  return Array.isArray(data) ? data : []
 }
 
 export async function createMeetup(row) {
-  const { data, error } = await supabase.from('meetups').insert(row).select().single()
+  const { error } = await supabase.from('meetups').insert(row)
   if (error) fail(error)
-  return data
 }
 
 export async function joinMeetup(id) {

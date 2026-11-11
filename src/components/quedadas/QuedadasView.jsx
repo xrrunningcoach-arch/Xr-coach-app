@@ -48,7 +48,7 @@ function Quedadas({ social, onDeactivated }) {
   const [meetups, setMeetups] = useState([])
   const [points, setPoints] = useState([])
   const [disciplines, setDisciplines] = useState([])
-  const [filters, setFilters] = useState({ day: 'all', discipline: 'all' })
+  const [filters, setFilters] = useState({ day: 'all', discipline: 'all', level: 'all' })
   const [error, setError] = useState(null)
   const community = social.communities
 
@@ -59,10 +59,12 @@ function Quedadas({ social, onDeactivated }) {
       setPoints(pts)
       setError(null)
     } catch (e) {
-      setError(e.message)
+      if (/permission denied for table meetups/i.test(e.message)) setError(t('qd.permissionMismatch'))
+      else if (/list_community_meetups|function.*not found|schema cache/i.test(e.message)) setError(t('qd.needMigration'))
+      else setError(e.message)
     }
     setLoading(false)
-  }, [social.community_id])
+  }, [social.community_id, t])
 
   useEffect(() => {
     reload()
@@ -113,14 +115,14 @@ function Quedadas({ social, onDeactivated }) {
         </button>
       </div>
 
-      <div role="group" aria-label={t('qd.title')} className="inline-flex border border-mist rounded-sm bg-surface overflow-hidden">
+      <div role="group" aria-label={t('qd.title')} className="flex w-full sm:w-auto border border-mist rounded-sm bg-surface overflow-hidden">
         {tabs.map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             aria-pressed={tab === id}
-            className={`px-3 py-2 text-sm transition-colors ${tab === id ? 'bg-primary text-white font-semibold' : 'text-slate hover:bg-bg'}`}
+            className={`flex-1 px-2 sm:px-3 py-2 text-[11px] sm:text-sm leading-tight transition-colors ${tab === id ? 'bg-primary text-white font-semibold' : 'text-slate hover:bg-bg'}`}
           >
             {label}
           </button>
@@ -135,20 +137,30 @@ function Quedadas({ social, onDeactivated }) {
         <>
           {tab === 'next' && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <select value={filters.day} onChange={(e) => setFilters({ ...filters, day: e.target.value })} aria-label={t('qd.filter.day.all')} className={selectCls}>
-                  <option value="all">{t('qd.filter.day.all')}</option>
-                  <option value="today">{t('qd.filter.day.today')}</option>
-                  <option value="week">{t('qd.filter.day.week')}</option>
-                </select>
-                <select value={filters.discipline} onChange={(e) => setFilters({ ...filters, discipline: e.target.value })} aria-label={t('qd.filter.discipline')} className={selectCls}>
-                  <option value="all">{t('qd.filter.allDisciplines')}</option>
-                  {disciplines.map((d) => (
-                    <option key={d.id} value={d.code}>
-                      {disciplineName(d)}
-                    </option>
-                  ))}
-                </select>
+              <div className="bg-surface border border-mist rounded-xl p-3 sm:p-4 space-y-3">
+                <p className="text-sm font-semibold text-navy">{t('qd.discover.title')}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <select value={filters.day} onChange={(e) => setFilters({ ...filters, day: e.target.value })} aria-label={t('qd.filter.day.all')} className={selectCls}>
+                    <option value="all">{t('qd.filter.day.all')}</option>
+                    <option value="today">{t('qd.filter.day.today')}</option>
+                    <option value="week">{t('qd.filter.day.week')}</option>
+                  </select>
+                  <select value={filters.discipline} onChange={(e) => setFilters({ ...filters, discipline: e.target.value })} aria-label={t('qd.filter.discipline')} className={selectCls}>
+                    <option value="all">{t('qd.filter.allDisciplines')}</option>
+                    {disciplines.map((d) => (
+                      <option key={d.id} value={d.code}>
+                        {disciplineName(d)}
+                      </option>
+                    ))}
+                  </select>
+                  <select value={filters.level} onChange={(e) => setFilters({ ...filters, level: e.target.value })} aria-label={t('qd.filter.level')} className={selectCls}>
+                    <option value="all">{t('qd.filter.allLevels')}</option>
+                    {['beginner', 'intermediate', 'advanced'].map((level) => (
+                      <option key={level} value={level}>{t(`qd.level.${level}`)}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-slate">{t('qd.discover.help')}</p>
               </div>
               {renderList(filtered, 'qd.empty')}
             </div>

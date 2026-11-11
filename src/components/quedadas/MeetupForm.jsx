@@ -142,6 +142,7 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
         <span className={labelCls}>{t('qd.f.description')}</span>
         <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2} maxLength={1000} className={`${inputCls} resize-none`} />
       </label>
+      <p className="text-xs text-slate">{t('qd.f.locationPrivacy')}</p>
 
       {errors.length > 0 && (
         <ul className="text-red text-sm space-y-0.5" role="alert">

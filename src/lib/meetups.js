@@ -211,11 +211,13 @@ export function paceRangeParts(meetup) {
   return { from: formatPaceSec(meetup.pace_min_s_km), to: formatPaceSec(meetup.pace_max_s_km) }
 }
 
-// filters: { day: 'all' | 'today' | 'week', discipline: 'all' | code }
-export function filterMeetups(list, { day = 'all', discipline = 'all' } = {}, now = new Date()) {
+// filters: day, discipline and level. Compatibility is deliberately broad:
+// an all-level session remains visible for every level.
+export function filterMeetups(list, { day = 'all', discipline = 'all', level = 'all' } = {}, now = new Date()) {
   const today = todayISO(now)
   return list.filter((m) => {
     if (discipline !== 'all' && m.discipline_code !== discipline) return false
+    if (level !== 'all' && m.level !== 'all' && m.level !== level) return false
     const d = localDateOf(m.starts_at)
     if (day === 'today') return d === today
     if (day === 'week') return d >= today && d <= addDays(today, 6)

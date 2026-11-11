@@ -19,6 +19,7 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
   const count = meetup.people.length
   const joined = meetup.people.some((p) => p.user_id === me)
   const state = joinState({ meetup, userId: me, count, joined })
+  const canSeeLocation = meetup.location_visible ?? (joined || meetup.organizer_id === me)
   const discipline = disciplines.find((d) => d.code === meetup.discipline_code) || null
   const color = disciplineColor(discipline, disciplines)
   const pace = paceRangeParts(meetup)
@@ -85,13 +86,17 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
         <p className="font-mono text-xs text-navy-light">{meta.join(' · ')}</p>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <span className="font-semibold">{meetup.place_name}</span>
-          <a href={mapsViewUrl(meetup, area)} target="_blank" rel="noreferrer" className="text-navy underline underline-offset-2 hover:text-red">
-            {t('qd.viewMap')}
-          </a>
-          <a href={mapsDirectionsUrl(meetup, area)} target="_blank" rel="noreferrer" className="text-navy underline underline-offset-2 hover:text-red">
-            {t('qd.directions')}
-          </a>
+          <span className="font-semibold">{canSeeLocation ? (meetup.exact_place_name || meetup.place_name) : area}</span>
+          {canSeeLocation ? (
+            <>
+              <a href={mapsViewUrl({ ...meetup, place_name: meetup.exact_place_name || meetup.place_name }, area)} target="_blank" rel="noreferrer" className="text-navy underline underline-offset-2 hover:text-red">
+                {t('qd.viewMap')}
+              </a>
+              <a href={mapsDirectionsUrl({ ...meetup, place_name: meetup.exact_place_name || meetup.place_name }, area)} target="_blank" rel="noreferrer" className="text-navy underline underline-offset-2 hover:text-red">
+                {t('qd.directions')}
+              </a>
+            </>
+          ) : <span className="text-xs text-slate">{t('qd.locationHidden')}</span>}
         </div>
 
         <div>
