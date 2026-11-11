@@ -39,7 +39,7 @@ Abre el pull request en GitHub, espera el CI en verde (tests y build) y haz merg
 
 ## 4. Base de datos (Supabase)
 
-1. **Primero en un proyecto de pruebas** (staging): SQL Editor, pega y ejecuta `0012_quedadas.sql` y después `0013_ubicacion_privada_quedadas.sql`. Son idempotentes.
+1. **Primero en un proyecto de pruebas** (staging): despliega el código nuevo y después, en SQL Editor, ejecuta `0012_quedadas.sql` (si falta) y `0013_ubicacion_privada_quedadas.sql`. La 0013 revoca la lectura directa de la tabla; una web antigua mostrará «permission denied for table meetups» hasta que se publique la versión nueva.
 2. Si todo va bien, repite en el proyecto real.
 3. **Puntos de encuentro de Orio:** no he inventado ninguno. En Google Maps haz clic derecho sobre el sitio, copia las coordenadas y ejecuta una vez por sitio:
 ```sql
