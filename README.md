@@ -26,6 +26,7 @@ Guía completa: [`docs/GUIA_v4.md`](docs/GUIA_v4.md).
    Esto crea las tablas, la seguridad por filas (RLS) y las funciones (`submit_session`,
    `apply_template_application`, códigos de invitación…).
    *Si ya tenías la v4 funcionando, ejecuta solo `0006` … `0011`, en orden (son idempotentes). `0008` activa varios entrenadores: asegúrate antes de que tu correo está en `app_config.coach_emails`, porque ese correo es el administrador que aprueba a los demás entrenadores. `0009` permite aplicar la biblioteca antes del inicio del plan.*
+   Para activar el piloto de entrenamientos en grupo, ejecuta también `0012_quedadas.sql` y después `0013_ubicacion_privada_quedadas.sql`.
 4. Abre `supabase/schema.sql` y localiza esta línea, cerca del principio:
    ```sql
    values (1, array['xr.running.coach@gmail.com'])

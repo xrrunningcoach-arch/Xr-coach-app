@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   XR Running Coach — sistema visual
+   Todos los colores salen de variables CSS (--c-*) que cambian con
+   <html data-theme="dark|light">. Los componentes usan nombres semánticos
+   (bg-surface, text-navy, border-mist…) y por eso el tema se cambia sin tocar
+   ningún componente.
+--------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-ink: var(--c-ink);
+  --color-bg: var(--c-bg);
+  --color-bg-dim: var(--c-dim);
+  --color-surface: var(--c-surface);
+  --color-mist: var(--c-line);
+  --color-slate: var(--c-muted);
+
+  /* "navy" = color de título/énfasis; "navy-light" = verde menta de acento */
+  --color-navy: var(--c-heading);
+  --color-navy-light: var(--c-mint);
+  --color-navy-deep: var(--c-hero);
+  --color-navy-mid: var(--c-hero-mid);
+
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-brand: var(--c-brand);
+  --color-brand-deep: var(--c-brand-deep);
+  --color-red: var(--c-red);
+  --color-red-deep: var(--c-red-deep);
+
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #08130f;
+  --c-surface: #0f1f1a;
+  --c-dim: #152a23;
+  --c-line: #26433b;
+  --c-ink: #e9f2ee;
+  --c-heading: #f2f9f5;
+  --c-muted: #9bb3a8;
+  --c-mint: #7fc1ad;
+  --c-primary: #1d5c4e;
+  --c-primary-hover: #26705f;
+  --c-hero: #0b2a22;
+  --c-hero-mid: #1b4a40;
+  --c-brand: #cf3a2c;
+  --c-brand-deep: #e24a3b;
+  --c-red: #f27565;
+  --c-red-deep: #ff9a8c;
+
+  --chart-grid: #1e352e;
+  --chart-axis: #2f4d44;
+  --chart-text: #b4c8be;
+  --chart-muted: #7f988c;
+  --chart-done: #7fc1ad;
+  --chart-planned: #3a5a50;
+  --chart-accent: #f27565;
+
+  --st-pend: #f27565;
+  --st-curso: #f2b830;
+  --st-done: #3fcb98;
+  --st-idle: #2f4d44;
+
+  --d1: #5aa2f0; --d2: #f58a5c; --d3: #3fcb98; --d4: #f2b830;
+  --d5: #f19bbd; --d6: #4dbb4d; --d7: #9a8ee6; --d8: #f26b6a;
+  --d-neutral: #98a39d;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #eef4f1;
+  --c-surface: #ffffff;
+  --c-dim: #e2ece7;
+  --c-line: #d7e3dd;
+  --c-ink: #0f1412;
+  --c-heading: #173933;
+  --c-muted: #4a554f;
+  --c-mint: #6ea393;
+  --c-primary: #173933;
+  --c-primary-hover: #0d2420;
+  --c-hero: #0d2420;
+  --c-hero-mid: #25534b;
+  --c-brand: #c1392b;
+  --c-brand-deep: #a12e22;
+  --c-red: #c1392b;
+  --c-red-deep: #a12e22;
+
+  --chart-grid: #e6eee9;
+  --chart-axis: #c5d3cb;
+  --chart-text: #4a554f;
+  --chart-muted: #7b8a82;
+  --chart-done: #25534b;
+  --chart-planned: #a9c7bb;
+  --chart-accent: #c1392b;
+
+  --st-pend: #c1392b;
+  --st-curso: #d99a1e;
+  --st-done: #2e8b57;
+  --st-idle: #d7e3dd;
+
+  --d1: #2a78d6; --d2: #eb6834; --d3: #1baf7a; --d4: #eda100;
+  --d5: #e87ba4; --d6: #008300; --d7: #4a3aa7; --d8: #e34948;
+  --d-neutral: #898781;
+}
+
+@layer base {
+  *, ::before, ::after, ::backdrop, ::file-selector-button {
+    border-color: var(--c-line);
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  ::placeholder { color: var(--c-muted); opacity: .55; }
+  ::selection { background: color-mix(in srgb, var(--c-brand) 55%, transparent); color: #fff; }
+  :focus-visible { outline: 2px solid var(--c-mint); outline-offset: 2px; border-radius: 4px; }
+  input, select, textarea { color: var(--c-ink); }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select, textarea { background-color: var(--c-surface); }
+  option { background: var(--c-surface); color: var(--c-ink); }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--c-brand); }
+  .font-display { letter-spacing: .01em; }
+}
+
+@layer utilities {
+  .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+}
+
+@keyframes xr-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes xr-fade { from { opacity: 0; } to { opacity: 1; } }
+.xr-rise { animation: xr-rise .28s ease-out both; }
+.xr-fade { animation: xr-fade .2s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

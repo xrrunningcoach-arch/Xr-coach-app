@@ -7,7 +7,8 @@ Esta carpeta contiene **solo los archivos nuevos o cambiados**, con sus rutas. S
 - Sección **Quedadas** en el menú del atleta (en el móvil sustituye a «Estadísticas» en la barra inferior; Estadísticas pasa a «Más») y en el del entrenador.
 - Primera vez: **activar quedadas** (perfil social con 18+, normas y nombre visible). Sin esto no se ve nada.
 - Crear quedada: título, disciplina, día y hora, duración, distancia, ritmo (de–a), nivel, plazas, lugar.
-- Lista de próximas (filtros por día y disciplina), «Me apunto / Me bajo», «Mis quedadas», cancelar (organizador) y **Denunciar**.
+- Descubrimiento de entrenamientos compatibles (filtros por día, disciplina y nivel), «Me apunto / Me bajo», «Mis entrenamientos», cancelar (organizador) y **Denunciar**.
+- El listado muestra solo la comunidad; el lugar exacto y las coordenadas se entregan desde Supabase solo a quien organiza o se apunta.
 - **Google Maps:** «Ver en Google Maps» y «Cómo llegar» (enlaces, sin clave de API y sin coste).
 
 ## 2. Archivos
@@ -38,7 +39,7 @@ Abre el pull request en GitHub, espera el CI en verde (tests y build) y haz merg
 
 ## 4. Base de datos (Supabase)
 
-1. **Primero en un proyecto de pruebas** (staging): SQL Editor, pega y ejecuta `0012_quedadas.sql`. Es idempotente.
+1. **Primero en un proyecto de pruebas** (staging): SQL Editor, pega y ejecuta `0012_quedadas.sql` y después `0013_ubicacion_privada_quedadas.sql`. Son idempotentes.
 2. Si todo va bien, repite en el proyecto real.
 3. **Puntos de encuentro de Orio:** no he inventado ninguno. En Google Maps haz clic derecho sobre el sitio, copia las coordenadas y ejecuta una vez por sitio:
 ```sql
