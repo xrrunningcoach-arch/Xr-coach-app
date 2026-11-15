@@ -2,7 +2,7 @@
 // - Navegación: red primero (siempre la versión más nueva), con copia de reserva sin conexión.
 // - /assets/ e /icons/: caché primero (los archivos llevan hash en el nombre).
 // - NUNCA toca peticiones a otros orígenes (Supabase): datos siempre en vivo.
-const VERSION = 'xr-v4-1'
+const VERSION = 'xr-v4-2'
 const SHELL = VERSION + '-shell'
 const STATIC = VERSION + '-static'
 
@@ -52,4 +52,35 @@ self.addEventListener('fetch', (e) => {
       )
     )
   }
+})
+
+self.addEventListener('push', (event) => {
+  let data = {}
+  try { data = event.data ? event.data.json() : {} } catch { data = { body: event.data?.text() || '' } }
+  const scope = self.registration.scope
+  const options = {
+    body: data.body || 'Tienes una novedad en tu entrenamiento.',
+    icon: new URL('icons/icon-192.png', scope).href,
+    badge: new URL('icons/icon-192.png', scope).href,
+    tag: data.tag || 'xr-running-coach-message',
+    renotify: false,
+    data: { url: data.url || new URL('./', scope).href },
+  }
+  event.waitUntil(self.registration.showNotification(data.title || 'XR Running Coach', options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = event.notification.data?.url || self.registration.scope
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of windows) {
+      if (new URL(client.url).origin === self.location.origin) {
+        await client.focus()
+        if (client.navigate) await client.navigate(target)
+        return
+      }
+    }
+    await self.clients.openWindow(target)
+  })())
 })

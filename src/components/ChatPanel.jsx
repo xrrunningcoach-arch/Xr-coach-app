@@ -79,15 +79,22 @@ export default function ChatPanel({ athleteId, otherName }) {
     if (!body || sending) return
     setSending(true)
     setError(null)
-    const { error: err } = await supabase
+    const { data: sentMessage, error: err } = await supabase
       .from('messages')
       .insert({ athlete_id: athleteId, sender_id: user.id, body })
+      .select('id')
+      .single()
     setSending(false)
     if (err) {
       setError(err.message)
       return
     }
     setText('')
+    if (sentMessage?.id) {
+      supabase.functions.invoke('send-push', { body: { messageId: sentMessage.id } }).then(({ error }) => {
+        if (error) console.info('Push notification is not configured yet:', error.message)
+      }).catch((pushError) => console.info('Push notification is not configured yet:', pushError.message))
+    }
     load()
   }
 

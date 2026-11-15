@@ -135,7 +135,7 @@ y úsala con `const t = useT(); t('clave')`.
   diarias: exporta tus datos de vez en cuando.
 - Los textos en euskera son una primera traducción: **revísalos** antes de enseñarlos a los atletas (están en `src/i18n/eu.js`).
 - Las pantallas del entrenador de la ficha del atleta (calendario, macro/mesociclos, biblioteca) siguen en castellano.
-- No hay recuperación de contraseña ni notificaciones push (se pueden añadir con `resetPasswordForEmail` y Web Push).
+- Las notificaciones push para mensajes requieren configurar VAPID, aplicar la migración `0016_notificaciones_push.sql` y publicar la Edge Function `send-push`. Sigue [la guía de notificaciones móviles](docs/NOTIFICACIONES_MOVIL.md).
 
 ## Historial
 

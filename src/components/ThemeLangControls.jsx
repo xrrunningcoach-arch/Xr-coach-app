@@ -14,7 +14,7 @@ export function LangSwitch() {
           onClick={() => setLang(l.code)}
           aria-pressed={lang === l.code}
           title={l.label}
-          className={`px-2.5 py-1.5 font-mono text-[11px] font-semibold transition-colors ${
+          className={`min-w-11 min-h-11 px-2.5 py-1.5 font-mono text-[11px] font-semibold transition-colors ${
             lang === l.code ? 'bg-primary text-white' : 'text-slate hover:text-navy'
           }`}
         >
@@ -35,7 +35,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className="w-9 h-9 inline-flex items-center justify-center rounded-md border border-mist text-slate hover:text-navy hover:border-navy-light transition-colors"
+      className="w-11 h-11 min-w-11 min-h-11 inline-flex shrink-0 items-center justify-center rounded-md border border-mist text-slate hover:text-navy hover:border-navy-light transition-colors"
     >
       {theme === 'dark' ? <IconSun width={18} height={18} /> : <IconMoon width={18} height={18} />}
     </button>

@@ -39,6 +39,12 @@ export default function AthleteHome() {
     loadUnread()
   }, [loadUnread, section])
 
+  useEffect(() => {
+    const openProfile = () => setSection('perfil')
+    window.addEventListener('xr:open-athlete-profile', openProfile)
+    return () => window.removeEventListener('xr:open-athlete-profile', openProfile)
+  }, [])
+
   const groups = [
     {
       title: t('nav.training'),
