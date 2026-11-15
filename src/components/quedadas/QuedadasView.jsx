@@ -8,13 +8,13 @@ import MeetupCard from './MeetupCard'
 import MeetupForm from './MeetupForm'
 import { disciplineName, fetchDisciplines } from '../../lib/disciplines'
 import { filterMeetups } from '../../lib/meetups'
-import { deactivateSocial, fetchMeetingPoints, fetchMeetups, fetchSocialProfile } from '../../lib/quedadasApi'
+import { deactivateSocial, fetchMeetups, fetchSocialProfile } from '../../lib/quedadasApi'
 
 const selectCls = 'border border-mist rounded-md px-3 py-2 text-sm bg-surface'
 
 // Sección «Quedadas»: perfil social (opt-in) y, una vez activado, lista de
 // próximas quedadas, las mías y crear una nueva.
-export default function QuedadasView() {
+export default function QuedadasView({ draftSession = null, onDraftConsumed }) {
   const { user, profile } = useAuth()
   const { t } = useLang()
   const [state, setState] = useState({ loading: true, social: null, missing: false, error: null })
@@ -37,26 +37,28 @@ export default function QuedadasView() {
   if (state.missing) return <p className="text-sm text-slate bg-surface border border-mist rounded-xl p-5">{t('qd.needMigration')}</p>
   if (state.error) return <p className="text-sm text-red">{state.error}</p>
   if (!state.social) return <SocialOptIn user={user} profile={profile} onDone={loadSocial} />
-  return <Quedadas social={state.social} onDeactivated={loadSocial} />
+  return <Quedadas social={state.social} onDeactivated={loadSocial} draftSession={draftSession} onDraftConsumed={onDraftConsumed} />
 }
 
-function Quedadas({ social, onDeactivated }) {
+function Quedadas({ social, onDeactivated, draftSession, onDraftConsumed }) {
   const { user } = useAuth()
   const { t } = useLang()
-  const [tab, setTab] = useState('next')
+  const [tab, setTab] = useState(() => draftSession ? 'create' : 'next')
   const [loading, setLoading] = useState(true)
   const [meetups, setMeetups] = useState([])
-  const [points, setPoints] = useState([])
   const [disciplines, setDisciplines] = useState([])
-  const [filters, setFilters] = useState({ day: 'all', discipline: 'all', level: 'all' })
+  const [filters, setFilters] = useState({ day: 'all', discipline: 'all' })
   const [error, setError] = useState(null)
   const community = social.communities
 
+  useEffect(() => {
+    if (draftSession) setTab('create')
+  }, [draftSession])
+
   const reload = useCallback(async () => {
     try {
-      const [list, pts] = await Promise.all([fetchMeetups(social.community_id), fetchMeetingPoints(social.community_id)])
+      const list = await fetchMeetups(social.community_id)
       setMeetups(list)
-      setPoints(pts)
       setError(null)
     } catch (e) {
       if (/permission denied for table meetups/i.test(e.message)) setError(t('qd.permissionMismatch'))
@@ -73,7 +75,7 @@ function Quedadas({ social, onDeactivated }) {
 
   const upcoming = useMemo(() => meetups.filter((m) => m.status === 'open' && new Date(m.starts_at).getTime() > Date.now()), [meetups])
   const filtered = useMemo(() => filterMeetups(upcoming, filters), [upcoming, filters])
-  const mine = useMemo(() => meetups.filter((m) => m.people.some((p) => p.user_id === user.id)), [meetups, user.id])
+  const mine = useMemo(() => meetups.filter((m) => m.joined ?? m.people.some((p) => p.user_id === user.id)), [meetups, user.id])
   const activeOwned = useMemo(() => meetups.filter((m) => m.organizer_id === user.id && m.status === 'open' && new Date(m.starts_at).getTime() > Date.now()).length, [meetups, user.id])
   const remainingSeriesSlots = Math.max(0, 5 - activeOwned)
 
@@ -155,12 +157,6 @@ function Quedadas({ social, onDeactivated }) {
                       </option>
                     ))}
                   </select>
-                  <select value={filters.level} onChange={(e) => setFilters({ ...filters, level: e.target.value })} aria-label={t('qd.filter.level')} className={selectCls}>
-                    <option value="all">{t('qd.filter.allLevels')}</option>
-                    {['beginner', 'intermediate', 'advanced'].map((level) => (
-                      <option key={level} value={level}>{t(`qd.level.${level}`)}</option>
-                    ))}
-                  </select>
                 </div>
                 <p className="text-xs text-slate">{t('qd.discover.help')}</p>
               </div>
@@ -174,11 +170,12 @@ function Quedadas({ social, onDeactivated }) {
             <MeetupForm
               user={user}
               social={social}
-              points={points}
+              draftSession={draftSession}
               disciplines={disciplines}
               remainingSeriesSlots={remainingSeriesSlots}
               onCreated={() => {
                 reload()
+                onDraftConsumed?.()
                 setTab('next')
               }}
             />

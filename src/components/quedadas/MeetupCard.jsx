@@ -16,20 +16,19 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
   const [reason, setReason] = useState('spam')
   const [details, setDetails] = useState('')
 
-  const count = meetup.people.length
-  const joined = meetup.people.some((p) => p.user_id === me)
-  const state = joinState({ meetup, userId: me, count, joined })
+  const participantCount = meetup.participant_count ?? meetup.people.length
+  const joined = meetup.joined ?? meetup.people.some((p) => p.user_id === me)
+  const state = joinState({ meetup, userId: me, count: participantCount, joined })
   const canSeeLocation = meetup.location_visible ?? (joined || meetup.organizer_id === me)
   const discipline = disciplines.find((d) => d.code === meetup.discipline_code) || null
   const color = disciplineColor(discipline, disciplines)
   const pace = paceRangeParts(meetup)
   const area = community?.name || ''
+  const capacity = meetup.max_participants
 
   const meta = [
-    t('qd.durationMin', { min: meetup.duration_min }),
     meetup.distance_km != null ? `${meetup.distance_km} km` : null,
-    pace ? t('qd.paceRange', pace) : null,
-    t(`qd.level.${meetup.level}`),
+    pace ? (pace.from === pace.to ? t('qd.paceTarget', { pace: pace.from }) : t('qd.paceRange', pace)) : null,
   ].filter(Boolean)
 
   async function run(action, okKey) {
@@ -76,6 +75,7 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
             </p>
             <h3 className="font-display text-xl text-navy mt-0.5">{meetup.title}</h3>
             {meetup.organizerName && <p className="text-xs text-slate mt-0.5">{t('qd.organizer', { name: meetup.organizerName })}</p>}
+            {meetup.from_plan && <p className="mt-1 inline-flex rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-navy">{t('qd.fromPlan')}</p>}
             {meetup.series_total > 1 && <p className="mt-1 inline-flex rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-navy">{t('qd.series.badge', { index: meetup.series_index, total: meetup.series_total })}</p>}
           </div>
           {state === 'cancelled' && <span className="font-mono text-[11px] text-red">{t('qd.cancelled')}</span>}
@@ -102,12 +102,10 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
 
         <div>
           <p className="font-mono text-[11px] uppercase text-slate">
-            {t('qd.people')} · {count}/{meetup.max_participants}
-            {state === 'open' || state === 'joined' || state === 'organizer'
-              ? ` · ${t('qd.spots', { count: spotsLeft(meetup, count) })}`
-              : state === 'full'
-                ? ` · ${t('qd.full')}`
-                : ''}
+            {t('qd.people')} · {capacity == null ? participantCount : `${participantCount}/${capacity}`}
+            {capacity != null && (state === 'open' || state === 'joined' || state === 'organizer')
+              ? ` · ${t('qd.spots', { count: spotsLeft(meetup, participantCount) })}`
+              : state === 'full' ? ` · ${t('qd.full')}` : ''}
           </p>
           <ul className="flex flex-wrap gap-1.5 mt-1.5">
             {meetup.people.map((p) => (
@@ -116,6 +114,7 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
                 {p.user_id === me ? ` (${t('qd.you')})` : ''}
               </li>
             ))}
+            {participantCount > meetup.people.length && <li className="text-xs text-slate px-2.5 py-1">{t('qd.peopleMore', { count: participantCount - meetup.people.length })}</li>}
           </ul>
         </div>
 

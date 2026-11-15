@@ -26,7 +26,7 @@ Guía completa: [`docs/GUIA_v4.md`](docs/GUIA_v4.md).
    Esto crea las tablas, la seguridad por filas (RLS) y las funciones (`submit_session`,
    `apply_template_application`, códigos de invitación…).
    *Si ya tenías la v4 funcionando, ejecuta solo `0006` … `0011`, en orden (son idempotentes). `0008` activa varios entrenadores: asegúrate antes de que tu correo está en `app_config.coach_emails`, porque ese correo es el administrador que aprueba a los demás entrenadores. `0009` permite aplicar la biblioteca antes del inicio del plan.*
-   Para activar el piloto de entrenamientos en grupo, ejecuta `0012_quedadas.sql`, `0013_ubicacion_privada_quedadas.sql` y `0014_comunidad_series_conexiones.sql`, en ese orden. La 0014 habilita solicitudes de nuevas zonas y quedadas semanales.
+   Para activar todas las funciones de quedadas, ejecuta las migraciones `0012`, `0013`, `0014` y `0015` en orden. En una app que ya está publicada, despliega primero el nuevo código y ejecuta la `0015` después para que el sitio antiguo no interprete las plazas ilimitadas como aforo completo.
 4. Abre `supabase/schema.sql` y localiza esta línea, cerca del principio:
    ```sql
    values (1, array['xr.running.coach@gmail.com'])

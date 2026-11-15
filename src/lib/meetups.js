@@ -89,9 +89,8 @@ const intIn = (v, min, max) => {
   return Number.isInteger(n) && n >= min && n <= max ? n : null
 }
 
-// form: { title, description, discipline_code, starts_local, duration_min,
-//         distance_km, pace_from, pace_to, level, max_participants,
-//         point_id, place_name, coords }
+// form: { title, discipline_code, starts_local, distance_km, pace,
+//         place_name, session_id }. Older pair/capacity fields remain accepted.
 // Devuelve { errors: [{ key, params? }], row }.
 export function buildMeetupRow(form, { organizerId, communityId, points = [], now = Date.now() }) {
   const errors = []
@@ -108,8 +107,9 @@ export function buildMeetupRow(form, { organizerId, communityId, points = [], no
     else if (t > now + MAX_DAYS_AHEAD * 86400000) errors.push({ key: 'qd.err.startFar' })
   }
 
-  const duration = intIn(form.duration_min, 10, 600)
-  if (duration == null) errors.push({ key: 'qd.err.duration' })
+  const durationRaw = String(form.duration_min ?? '').trim()
+  const duration = durationRaw ? intIn(durationRaw, 10, 600) : null
+  if (durationRaw && duration == null) errors.push({ key: 'qd.err.duration' })
 
   let distance = null
   const distRaw = String(form.distance_km ?? '').trim().replace(',', '.')
@@ -121,9 +121,14 @@ export function buildMeetupRow(form, { organizerId, communityId, points = [], no
 
   let paceMin = null
   let paceMax = null
+  const targetPace = String(form.pace ?? '').trim()
   const pf = String(form.pace_from ?? '').trim()
   const pt = String(form.pace_to ?? '').trim()
-  if (pf || pt) {
+  if (targetPace) {
+    const parsed = parsePace(targetPace)
+    if (parsed == null) errors.push({ key: 'qd.err.paceFormat' })
+    else { paceMin = parsed; paceMax = parsed }
+  } else if (pf || pt) {
     if (!pf || !pt) {
       errors.push({ key: 'qd.err.pacePair' })
     } else {
@@ -138,8 +143,9 @@ export function buildMeetupRow(form, { organizerId, communityId, points = [], no
     }
   }
 
-  const max = intIn(form.max_participants, 2, 50)
-  if (max == null) errors.push({ key: 'qd.err.max' })
+  const maxRaw = String(form.max_participants ?? '').trim()
+  const max = maxRaw ? intIn(maxRaw, 2, 50) : null
+  if (maxRaw && max == null) errors.push({ key: 'qd.err.max' })
 
   const point = form.point_id ? points.find((p) => p.id === form.point_id) : null
   let placeName = ''
@@ -173,6 +179,7 @@ export function buildMeetupRow(form, { organizerId, communityId, points = [], no
     row: {
       organizer_id: organizerId,
       community_id: communityId,
+      session_id: form.session_id || null,
       meeting_point_id: pointId,
       title,
       description: description || null,
@@ -194,7 +201,7 @@ export function buildMeetupRow(form, { organizerId, communityId, points = [], no
 // ---------------------------------------------------------------------------
 // Estado de una quedada para quien la mira
 // ---------------------------------------------------------------------------
-export const spotsLeft = (meetup, count) => Math.max(0, meetup.max_participants - count)
+export const spotsLeft = (meetup, count) => meetup.max_participants == null ? null : Math.max(0, meetup.max_participants - count)
 
 // 'cancelled' | 'past' | 'organizer' | 'joined' | 'full' | 'open'
 export function joinState({ meetup, userId, count, joined, now = Date.now() }) {
@@ -202,7 +209,7 @@ export function joinState({ meetup, userId, count, joined, now = Date.now() }) {
   if (new Date(meetup.starts_at).getTime() <= now) return 'past'
   if (meetup.organizer_id === userId) return 'organizer'
   if (joined) return 'joined'
-  if (count >= meetup.max_participants) return 'full'
+  if (meetup.max_participants != null && count >= meetup.max_participants) return 'full'
   return 'open'
 }
 

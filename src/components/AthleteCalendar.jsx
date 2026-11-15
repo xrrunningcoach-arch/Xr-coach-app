@@ -58,6 +58,7 @@ export default function AthleteCalendar({
   evaluationsBySession,
   milestones,
   onUpdated,
+  onProposeSession,
 }) {
   const t = useT()
   const today = useToday()
@@ -148,13 +149,19 @@ export default function AthleteCalendar({
     return (
       <div className="divide-y divide-mist">
         {list.map((s) => (
-          <SessionCard
-            key={s.id}
-            session={s}
-            discipline={findDiscipline(disciplines, s.discipline_id)}
-            evaluations={evaluationsBySession[s.id] || []}
-            onUpdated={onUpdated}
-          />
+          <div key={s.id}>
+            <SessionCard
+              session={s}
+              discipline={findDiscipline(disciplines, s.discipline_id)}
+              evaluations={evaluationsBySession[s.id] || []}
+              onUpdated={onUpdated}
+            />
+            {onProposeSession && s.session_date >= today && s.status === 'pendiente' && <div className="border-t border-mist bg-bg-dim px-4 py-2">
+              <button type="button" onClick={() => onProposeSession(s)} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold text-navy transition hover:bg-brand/20">
+                <span aria-hidden="true" className="grid h-5 w-5 place-items-center rounded-full bg-brand text-[11px]">+</span>{t('cal.proposeGroup')}
+              </button>
+            </div>}
+          </div>
         ))}
       </div>
     )

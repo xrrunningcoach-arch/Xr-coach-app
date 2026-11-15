@@ -20,6 +20,7 @@ export default function AthleteHome() {
   const t = useT()
   const [section, setSection] = useState('hoy')
   const [unread, setUnread] = useState(0)
+  const [meetupDraftSession, setMeetupDraftSession] = useState(null)
   const isPlanSection = PLAN_SECTIONS.includes(section)
 
   // Mensajes del entrenador sin leer (insignia en «Chat» y aviso en «Hoy»).
@@ -69,10 +70,15 @@ export default function AthleteHome() {
         {/* El panel del plan se queda montado al cambiar de sección: así no se
             recargan los datos ni se pierde el mes que estabas mirando. */}
         <div className={isPlanSection ? '' : 'hidden'}>
-          <AthleteDashboard section={isPlanSection ? section : 'hoy'} onNavigate={setSection} unread={unread} />
+          <AthleteDashboard
+            section={isPlanSection ? section : 'hoy'}
+            onNavigate={setSection}
+            unread={unread}
+            onProposeSession={(session) => { setMeetupDraftSession(session); setSection('quedadas') }}
+          />
         </div>
 
-        {section === 'quedadas' && <QuedadasView />}
+        {section === 'quedadas' && <QuedadasView draftSession={meetupDraftSession} onDraftConsumed={() => setMeetupDraftSession(null)} />}
 
         {section === 'conexiones' && <ConnectionsView onNavigate={setSection} />}
 

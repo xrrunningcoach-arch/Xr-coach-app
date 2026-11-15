@@ -401,6 +401,7 @@ export default {
   "cal.more": "+{n} gehiago",
   "cal.hint": "Sakatu egun bat bere entrenamenduak ikusteko eta erregistratzeko.",
   "cal.noneDay": "Egun horretan ez dago entrenamendurik programatuta.",
+  "cal.proposeGroup": "Proposatu entrenamendu hau komunitateari",
   "cal.legend": "Diziplinen legenda",
   "cal.undated": "Egunik esleitu gabe",
   "cal.undatedHelp": "Zure entrenatzaileak oraindik ez die egunik jarri egutegian.",

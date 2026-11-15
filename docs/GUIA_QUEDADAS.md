@@ -11,6 +11,8 @@ Esta carpeta contiene **solo los archivos nuevos o cambiados**, con sus rutas. S
 - El listado muestra solo la comunidad; el lugar exacto y las coordenadas se entregan desde Supabase solo a quien organiza o se apunta.
 - **Google Maps:** «Ver en Google Maps» y «Cómo llegar» (enlaces, sin clave de API y sin coste).
 - Quedadas semanales: crear una serie y apuntarse o salir de todas las próximas fechas con una sola acción.
+- Desde cada sesión pendiente y futura del calendario, proponer la sesión completa a la comunidad con un toque; solo hace falta elegir hora y lugar.
+- Formulario de propuesta reducido: sin duración, aforo, nivel, coordenadas ni descripción manual. Las plazas no tienen límite; en listas grandes se muestran hasta doce nombres y el total.
 - Solicitudes de nuevas comunidades: atletas indican su zona y el administrador puede revisar y abrirla desde Quedadas.
 - Estado transparente de Strava, COROS y Bluetooth. El registro manual y el enlace de actividad sí están disponibles; la sincronización automática aún no.
 
@@ -21,6 +23,7 @@ Esta carpeta contiene **solo los archivos nuevos o cambiados**, con sus rutas. S
 | `supabase/migrations/0012_quedadas.sql` | Tablas, seguridad (RLS) y funciones |
 | `supabase/migrations/0013_ubicacion_privada_quedadas.sql` | Protege las ubicaciones exactas y habilita el RPC de listado |
 | `supabase/migrations/0014_comunidad_series_conexiones.sql` | Solicitudes de comunidades, series semanales y reservas seguras |
+| `supabase/migrations/0015_propuesta_desde_plan_y_aforo_libre.sql` | Enlace con sesiones y participantes sin límite |
 | `src/lib/meetups.js`, `src/lib/quedadasApi.js` | Lógica pura y acceso a Supabase |
 | `src/components/quedadas/*` | Pantallas |
 | `src/components/icons-social.jsx` | Icono |
@@ -44,9 +47,10 @@ Abre el pull request en GitHub, espera el CI en verde (tests y build) y haz merg
 
 ## 4. Base de datos (Supabase)
 
-1. **Primero en un proyecto de pruebas** (staging): si faltan, ejecuta en orden `0012_quedadas.sql`, `0013_ubicacion_privada_quedadas.sql` y `0014_comunidad_series_conexiones.sql` desde Supabase SQL Editor. La 0013 revoca la lectura directa de la tabla; por eso publica a continuación el código nuevo antes de probar la web.
-2. Si todo va bien, repite en el proyecto real.
-3. **Puntos de encuentro de Orio:** no he inventado ninguno. En Google Maps haz clic derecho sobre el sitio, copia las coordenadas y ejecuta una vez por sitio:
+1. **Primero en un proyecto de pruebas** (staging): si faltan, ejecuta en orden `0012_quedadas.sql`, `0013_ubicacion_privada_quedadas.sql` y `0014_comunidad_series_conexiones.sql`. La 0013 revoca la lectura directa; asegúrate de publicar el código actual al actualizar esas migraciones.
+2. Publica el código de esta versión antes de ejecutar la migración 0015. Así no dejas la web anterior mostrando aforos como completos al cambiar los grupos a plazas ilimitadas. Si alguien intenta proponer una quedada durante ese breve intervalo, la app le indicará que falta la migración.
+3. Después del despliegue, ejecuta `0015_propuesta_desde_plan_y_aforo_libre.sql` desde Supabase SQL Editor. Si todo va bien, repite los mismos pasos en producción.
+4. **Puntos de encuentro de Orio:** no he inventado ninguno. En Google Maps haz clic derecho sobre el sitio, copia las coordenadas y ejecuta una vez por sitio:
 ```sql
 insert into public.meeting_points (community_id, name, description, lat, lng)
 select id, 'NOMBRE DEL SITIO', 'Dónde exactamente', 43.000000, -2.000000
@@ -68,6 +72,6 @@ Si no añades ninguno, se puede igualmente escribir el lugar a mano en cada qued
 
 ## 7. Despliegue seguro
 
-Aplica primero la migración 0014 en staging y verifica: que una serie semanal cree todas sus fechas; que apuntarse reserve plaza en todas ellas; que abandonar la serie libere las próximas; que la solicitud de zona llegue al panel administrador; y que abrir una comunidad la haga seleccionable para atletas. Después de validar el entorno de pruebas, repite el orden en producción.
+Aplica las migraciones nuevas en staging y verifica: que desde una sesión del calendario se abra una propuesta con sus datos; que baste indicar fecha/hora y lugar; que se admitan grupos sin límite de participantes; que una serie semanal cree sus fechas y permita apuntarse o salir de todas; que las solicitudes de zona lleguen al panel administrador. Después de validar el entorno de pruebas, repite el orden en producción.
 
 Las tarjetas de conexión no activan integraciones de Strava, COROS ni Bluetooth. Informan del estado disponible para que el atleta no confunda un enlace manual con una sincronización automática.

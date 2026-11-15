@@ -18,7 +18,7 @@ import RpeScaleTable from '../components/RpeScaleTable'
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
 // panel lateral (AthleteHome); este componente recibe la sección activa y
 // pinta su contenido. Las tarjetas de sesión (SessionCard) no han cambiado.
-export default function AthleteDashboard({ section = 'hoy', onNavigate, unread = 0 }) {
+export default function AthleteDashboard({ section = 'hoy', onNavigate, onProposeSession, unread = 0 }) {
   const { user, profile } = useAuth()
   const t = useT()
   const today = useToday()
@@ -189,6 +189,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, unread =
           evaluationsBySession={evaluationsBySession}
           milestones={milestones}
           onUpdated={() => loadData(true)}
+          onProposeSession={onProposeSession}
         />
       )}
 

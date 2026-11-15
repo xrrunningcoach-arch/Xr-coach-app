@@ -1,4 +1,4 @@
-// Lecturas y escrituras de quedadas y comunidades (migraciones 0012–0014).
+// Lecturas y escrituras de quedadas y comunidades (migraciones 0012–0015).
 import { supabase } from '../supabaseClient'
 import { RULES_VERSION } from './meetups'
 

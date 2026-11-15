@@ -401,6 +401,7 @@ export default {
   "cal.more": "+{n} más",
   "cal.hint": "Pulsa un día para ver sus entrenamientos y registrarlos.",
   "cal.noneDay": "No hay entrenamientos programados este día.",
+  "cal.proposeGroup": "Proponer este entrenamiento a la comunidad",
   "cal.legend": "Leyenda de disciplinas",
   "cal.undated": "Sin día asignado",
   "cal.undatedHelp": "Tu entrenador aún no les ha puesto fecha en el calendario.",
