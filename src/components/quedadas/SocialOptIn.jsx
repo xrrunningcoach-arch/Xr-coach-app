@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLang } from '../../i18n'
 import { ui } from '../../ui/ui'
 import { suggestDisplayName } from '../../lib/meetups'
-import { fetchCommunities, saveSocialProfile } from '../../lib/quedadasApi'
+import { fetchCommunities, requestCommunity, saveSocialProfile } from '../../lib/quedadasApi'
 
 const inputCls = 'w-full border border-mist rounded-md px-3 py-2.5 text-sm'
 const labelCls = 'block font-mono text-xs text-slate mb-1'
@@ -17,6 +17,9 @@ export default function SocialOptIn({ user, profile, onDone }) {
   const [adult, setAdult] = useState(false)
   const [rules, setRules] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [requestOpen, setRequestOpen] = useState(false)
+  const [requestedName, setRequestedName] = useState('')
+  const [postalCode, setPostalCode] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -48,6 +51,22 @@ export default function SocialOptIn({ user, profile, onDone }) {
     setBusy(false)
   }
 
+  async function submitCommunityRequest(e) {
+    e.preventDefault()
+    if (requestedName.trim().length < 2 || busy) return
+    setBusy(true)
+    try {
+      await requestCommunity({ userId: user.id, name: requestedName, postalCode })
+      ui.success(t('qd.communityRequest.saved'))
+      setRequestedName('')
+      setPostalCode('')
+      setRequestOpen(false)
+    } catch (err) {
+      ui.error(t('qd.err.generic', { msg: err.message }))
+    }
+    setBusy(false)
+  }
+
   return (
     <form onSubmit={submit} className="bg-surface border border-mist rounded-xl p-6 space-y-5 max-w-xl">
       <div>
@@ -69,6 +88,23 @@ export default function SocialOptIn({ user, profile, onDone }) {
           ))}
         </select>
       </label>
+
+      <div onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }} className="rounded-xl border border-mist bg-bg-dim/70 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-navy">{t('qd.communityRequest.title')}</p>
+            <p className="mt-1 text-xs text-slate">{t('qd.communityRequest.help')}</p>
+          </div>
+          <button type="button" onClick={() => setRequestOpen((open) => !open)} className="rounded-md border border-mist bg-surface px-3 py-2 text-sm font-semibold text-navy hover:border-brand">
+            {requestOpen ? t('common.close') : t('qd.communityRequest.open')}
+          </button>
+        </div>
+        {requestOpen && <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_9rem_auto]">
+          <label><span className={labelCls}>{t('qd.communityRequest.name')}</span><input value={requestedName} onChange={(e) => setRequestedName(e.target.value)} maxLength={80} required className={inputCls} /></label>
+          <label><span className={labelCls}>{t('qd.communityRequest.postal')}</span><input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} maxLength={10} className={inputCls} /></label>
+          <button type="button" onClick={submitCommunityRequest} disabled={busy || requestedName.trim().length < 2} className="self-end rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-deep disabled:opacity-60">{t('qd.communityRequest.send')}</button>
+        </div>}
+      </div>
 
       <label className="block">
         <span className={labelCls}>{t('qd.optin.displayName')}</span>

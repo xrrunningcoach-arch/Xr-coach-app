@@ -1,4 +1,4 @@
-// Lecturas y escrituras de las quedadas en Supabase (migraciones 0012–0013).
+// Lecturas y escrituras de quedadas y comunidades (migraciones 0012–0014).
 import { supabase } from '../supabaseClient'
 import { RULES_VERSION } from './meetups'
 
@@ -42,6 +42,16 @@ export async function saveSocialProfile({ userId, communityId, displayName }) {
   if (error) fail(error)
 }
 
+export async function requestCommunity({ userId, name, postalCode, sport = 'running' }) {
+  const { error } = await supabase.from('community_requests').insert({
+    requester_id: userId,
+    name: name.trim(),
+    postal_code: postalCode.trim() || null,
+    sport,
+  })
+  if (error) fail(error)
+}
+
 export async function deactivateSocial(userId) {
   const { error } = await supabase
     .from('social_profiles')
@@ -69,7 +79,7 @@ export async function fetchMeetups(communityId) {
 }
 
 export async function createMeetup(row) {
-  const { error } = await supabase.from('meetups').insert(row)
+  const { error } = await supabase.from('meetups').insert(Array.isArray(row) ? row : [row])
   if (error) fail(error)
 }
 

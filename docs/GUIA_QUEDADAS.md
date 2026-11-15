@@ -10,12 +10,17 @@ Esta carpeta contiene **solo los archivos nuevos o cambiados**, con sus rutas. S
 - Descubrimiento de entrenamientos compatibles (filtros por día, disciplina y nivel), «Me apunto / Me bajo», «Mis entrenamientos», cancelar (organizador) y **Denunciar**.
 - El listado muestra solo la comunidad; el lugar exacto y las coordenadas se entregan desde Supabase solo a quien organiza o se apunta.
 - **Google Maps:** «Ver en Google Maps» y «Cómo llegar» (enlaces, sin clave de API y sin coste).
+- Quedadas semanales: crear una serie y apuntarse o salir de todas las próximas fechas con una sola acción.
+- Solicitudes de nuevas comunidades: atletas indican su zona y el administrador puede revisar y abrirla desde Quedadas.
+- Estado transparente de Strava, COROS y Bluetooth. El registro manual y el enlace de actividad sí están disponibles; la sincronización automática aún no.
 
 ## 2. Archivos
 
 | Ruta | Qué es |
 |---|---|
 | `supabase/migrations/0012_quedadas.sql` | Tablas, seguridad (RLS) y funciones |
+| `supabase/migrations/0013_ubicacion_privada_quedadas.sql` | Protege las ubicaciones exactas y habilita el RPC de listado |
+| `supabase/migrations/0014_comunidad_series_conexiones.sql` | Solicitudes de comunidades, series semanales y reservas seguras |
 | `src/lib/meetups.js`, `src/lib/quedadasApi.js` | Lógica pura y acceso a Supabase |
 | `src/components/quedadas/*` | Pantallas |
 | `src/components/icons-social.jsx` | Icono |
@@ -39,7 +44,7 @@ Abre el pull request en GitHub, espera el CI en verde (tests y build) y haz merg
 
 ## 4. Base de datos (Supabase)
 
-1. **Primero en un proyecto de pruebas** (staging): despliega el código nuevo y después, en SQL Editor, ejecuta `0012_quedadas.sql` (si falta) y `0013_ubicacion_privada_quedadas.sql`. La 0013 revoca la lectura directa de la tabla; una web antigua mostrará «permission denied for table meetups» hasta que se publique la versión nueva.
+1. **Primero en un proyecto de pruebas** (staging): si faltan, ejecuta en orden `0012_quedadas.sql`, `0013_ubicacion_privada_quedadas.sql` y `0014_comunidad_series_conexiones.sql` desde Supabase SQL Editor. La 0013 revoca la lectura directa de la tabla; por eso publica a continuación el código nuevo antes de probar la web.
 2. Si todo va bien, repite en el proyecto real.
 3. **Puntos de encuentro de Orio:** no he inventado ninguno. En Google Maps haz clic derecho sobre el sitio, copia las coordenadas y ejecuta una vez por sitio:
 ```sql
@@ -61,15 +66,8 @@ Si no añades ninguno, se puede igualmente escribir el lugar a mano en cada qued
 - **Moderación:** las denuncias solo las ve el administrador (correo de `coach_emails`): `select * from public.meetup_reports;`. El administrador puede cancelar o borrar cualquier quedada desde SQL.
 - **Límites en base de datos:** máximo 5 quedadas activas por persona, solo a 90 días vista, plazas controladas sin carreras entre dos personas.
 
-## 7. Qué se ha verificado y qué no
+## 7. Despliegue seguro
 
-Verificado: 12 tests de la lógica (validación, enlaces de Google Maps, estados, filtros) y paridad castellano/euskera de los textos nuevos; sintaxis de los 14 archivos JS/JSX.
+Aplica primero la migración 0014 en staging y verifica: que una serie semanal cree todas sus fechas; que apuntarse reserve plaza en todas ellas; que abandonar la serie libere las próximas; que la solicitud de zona llegue al panel administrador; y que abrir una comunidad la haga seleccionable para atletas. Después de validar el entorno de pruebas, repite el orden en producción.
 
-**No verificado** (no hay base de datos ni red en el entorno donde se preparó):
-- La migración 0012 en un Postgres real: pruébala primero en staging.
-- `npm run build` y el aspecto en pantalla. Si el CI falla, copia el error.
-- La calidad del euskera (primera traducción): revísala.
-
-## 8. Siguientes fases
-
-B: chat por quedada, editar, quedadas recurrentes, asistencia. C: «Añadir a mi calendario», más pueblos, Google Places y mapa embebido.
+Las tarjetas de conexión no activan integraciones de Strava, COROS ni Bluetooth. Informan del estado disponible para que el atleta no confunda un enlace manual con una sincronización automática.

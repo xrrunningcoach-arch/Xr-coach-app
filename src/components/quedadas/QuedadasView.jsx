@@ -74,6 +74,8 @@ function Quedadas({ social, onDeactivated }) {
   const upcoming = useMemo(() => meetups.filter((m) => m.status === 'open' && new Date(m.starts_at).getTime() > Date.now()), [meetups])
   const filtered = useMemo(() => filterMeetups(upcoming, filters), [upcoming, filters])
   const mine = useMemo(() => meetups.filter((m) => m.people.some((p) => p.user_id === user.id)), [meetups, user.id])
+  const activeOwned = useMemo(() => meetups.filter((m) => m.organizer_id === user.id && m.status === 'open' && new Date(m.starts_at).getTime() > Date.now()).length, [meetups, user.id])
+  const remainingSeriesSlots = Math.max(0, 5 - activeOwned)
 
   async function handleDeactivate() {
     if (!(await ui.confirm(t('qd.optin.confirmDeactivate'), { confirmLabel: t('qd.optin.deactivate') }))) return
@@ -174,6 +176,7 @@ function Quedadas({ social, onDeactivated }) {
               social={social}
               points={points}
               disciplines={disciplines}
+              remainingSeriesSlots={remainingSeriesSlots}
               onCreated={() => {
                 reload()
                 setTab('next')

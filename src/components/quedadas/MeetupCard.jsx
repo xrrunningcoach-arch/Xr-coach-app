@@ -76,6 +76,7 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
             </p>
             <h3 className="font-display text-xl text-navy mt-0.5">{meetup.title}</h3>
             {meetup.organizerName && <p className="text-xs text-slate mt-0.5">{t('qd.organizer', { name: meetup.organizerName })}</p>}
+            {meetup.series_total > 1 && <p className="mt-1 inline-flex rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-navy">{t('qd.series.badge', { index: meetup.series_index, total: meetup.series_total })}</p>}
           </div>
           {state === 'cancelled' && <span className="font-mono text-[11px] text-red">{t('qd.cancelled')}</span>}
           {state === 'past' && <span className="font-mono text-[11px] text-slate">{t('qd.past')}</span>}
@@ -121,12 +122,12 @@ export default function MeetupCard({ meetup, me, community, disciplines, onChang
         <div className="flex flex-wrap items-center gap-2">
           {state === 'open' && (
             <button type="button" disabled={busy} onClick={() => run(() => joinMeetup(meetup.id), 'qd.joinedMsg')} className={`${btn} bg-brand hover:bg-brand-deep text-white`}>
-              {t('qd.join')}
+              {meetup.series_total > 1 ? t('qd.joinSeries') : t('qd.join')}
             </button>
           )}
           {state === 'joined' && (
             <button type="button" disabled={busy} onClick={() => run(() => leaveMeetup(meetup.id), 'qd.leftMsg')} className={`${btn} text-slate border border-mist hover:border-red hover:text-red`}>
-              {t('qd.leave')}
+              {meetup.series_total > 1 ? t('qd.leaveSeries') : t('qd.leave')}
             </button>
           )}
           {state === 'organizer' && (

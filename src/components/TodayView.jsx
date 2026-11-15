@@ -213,6 +213,11 @@ export default function TodayView({ today, profile, plan, race, sessions, discip
         </section>
       )}
 
+      {onNavigate && <button type="button" onClick={() => onNavigate('quedadas')} className="group w-full rounded-xl border border-brand/60 bg-brand/10 p-4 text-left transition hover:border-brand hover:bg-brand/20 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-5">
+        <span><span className="block font-display text-xl text-navy">{t('today.findGroup')}</span><span className="mt-1 block text-sm text-slate">{t('today.findGroupHelp')}</span></span>
+        <span aria-hidden="true" className="mt-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand font-display text-xl text-navy transition group-hover:translate-x-1 sm:mt-0">→</span>
+      </button>}
+
       {data.overdue.length > 0 && (
         <section className="space-y-3" aria-label={t('today.overdue')}>
           <div>

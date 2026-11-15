@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useLang } from '../../i18n'
 import { ui } from '../../ui/ui'
 import { disciplineName } from '../../lib/disciplines'
-import { LEVELS, buildMeetupRow, defaultStartLocal } from '../../lib/meetups'
+import { LEVELS, buildMeetupRow, defaultStartLocal, isoToLocalInput } from '../../lib/meetups'
 import { createMeetup } from '../../lib/quedadasApi'
 
 const inputCls = 'w-full border border-mist rounded-md px-3 py-2.5 text-sm'
 const labelCls = 'block font-mono text-xs text-slate mb-1'
 
 // Crear una quedada: qué, cuándo, a qué ritmo y dónde.
-export default function MeetupForm({ user, social, points, disciplines, onCreated }) {
+export default function MeetupForm({ user, social, points, disciplines, remainingSeriesSlots = 5, onCreated }) {
   const { t } = useLang()
   const [f, setF] = useState(() => ({
     title: '',
@@ -25,6 +25,7 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
     point_id: '',
     place_name: '',
     coords: '',
+    repeat_weeks: 1,
   }))
   const [errors, setErrors] = useState([])
   const [busy, setBusy] = useState(false)
@@ -32,7 +33,21 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
 
   async function submit(e) {
     e.preventDefault()
-    const { errors: found, row } = buildMeetupRow(f, { organizerId: user.id, communityId: social.community_id, points })
+    const weeks = Math.max(1, Math.min(Number(f.repeat_weeks) || 1, remainingSeriesSlots || 1))
+    const seriesId = weeks > 1 ? (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`) : null
+    const rows = []
+    let found = []
+    for (let index = 0; index < weeks; index += 1) {
+      const start = new Date(f.starts_local)
+      start.setDate(start.getDate() + index * 7)
+      const instance = { ...f, starts_local: isoToLocalInput(start.toISOString()) }
+      const built = buildMeetupRow(instance, { organizerId: user.id, communityId: social.community_id, points })
+      if (built.errors.length) {
+        found = built.errors
+        break
+      }
+      rows.push({ ...built.row, ...(seriesId ? { series_id: seriesId, series_index: index + 1, series_total: weeks } : {}) })
+    }
     if (found.length) {
       setErrors(found)
       return
@@ -40,7 +55,7 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
     setErrors([])
     setBusy(true)
     try {
-      await createMeetup(row)
+      await createMeetup(rows)
       ui.success(t('qd.createdMsg'))
       onCreated()
     } catch (err) {
@@ -74,6 +89,17 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
           <input type="datetime-local" value={f.starts_local} onChange={(e) => set('starts_local', e.target.value)} className={inputCls} />
         </label>
       </div>
+
+      <label className="block max-w-sm">
+        <span className={labelCls}>{t('qd.f.repeat')}</span>
+        <select value={f.repeat_weeks} onChange={(e) => set('repeat_weeks', Number(e.target.value))} className={inputCls}>
+          {Array.from({ length: Math.max(1, remainingSeriesSlots) }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>{n === 1 ? t('qd.f.once') : t('qd.f.weeklyCount', { count: n })}</option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-slate">{t('qd.f.repeatHelp')}</span>
+      </label>
+      {remainingSeriesSlots === 0 && <p className="rounded-lg border border-brand/50 bg-brand/10 p-3 text-sm text-navy" role="status">{t('qd.f.limitReached')}</p>}
 
       <div className="grid sm:grid-cols-3 gap-4">
         <label className="block">
@@ -153,7 +179,7 @@ export default function MeetupForm({ user, social, points, disciplines, onCreate
         </ul>
       )}
 
-      <button type="submit" disabled={busy} className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-md disabled:opacity-60">
+      <button type="submit" disabled={busy || remainingSeriesSlots === 0} className="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-md disabled:opacity-60">
         {busy ? t('common.saving') : t('qd.f.save')}
       </button>
     </form>

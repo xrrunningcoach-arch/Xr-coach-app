@@ -6,6 +6,7 @@ import AthleteDashboard from './AthleteDashboard'
 import AnamnesisForm from '../components/AnamnesisForm'
 import CoachChooser from '../components/CoachChooser'
 import DataExport from '../components/DataExport'
+import ConnectionsView from '../components/ConnectionsView'
 import ChatPanel from '../components/ChatPanel'
 import Sidebar from '../components/Sidebar'
 import QuedadasView from '../components/quedadas/QuedadasView'
@@ -55,6 +56,7 @@ export default function AthleteHome() {
       items: [
         { id: 'perfil', label: t('nav.profile'), icon: IconUser },
         { id: 'chat', label: t('nav.chat'), short: t('nav.chatShort'), icon: IconChat, primary: true, badge: unread || undefined },
+        { id: 'conexiones', label: t('nav.connections'), icon: IconFlag },
       ],
     },
   ]
@@ -71,6 +73,8 @@ export default function AthleteHome() {
         </div>
 
         {section === 'quedadas' && <QuedadasView />}
+
+        {section === 'conexiones' && <ConnectionsView onNavigate={setSection} />}
 
         {section === 'perfil' && (
           <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">
