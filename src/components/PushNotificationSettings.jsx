@@ -76,6 +76,7 @@ export default function PushNotificationSettings({ userId }) {
         endpoint: subscription.endpoint,
         subscription: subscription.toJSON(),
         user_agent: navigator.userAgent.slice(0, 500),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,endpoint' })
       if (error) throw error

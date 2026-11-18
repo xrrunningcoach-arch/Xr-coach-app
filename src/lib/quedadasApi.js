@@ -79,13 +79,21 @@ export async function fetchMeetups(communityId) {
 }
 
 export async function createMeetup(row) {
-  const { error } = await supabase.from('meetups').insert(Array.isArray(row) ? row : [row])
+  const { data, error } = await supabase.from('meetups').insert(Array.isArray(row) ? row : [row]).select('id')
   if (error) fail(error)
+  for (const meetup of data || []) {
+    supabase.functions.invoke('send-push', { body: { kind: 'meetup_created', meetupId: meetup.id } }).then(({ error: pushError }) => {
+      if (pushError) console.info('Meetup announcement push could not be sent:', pushError.message)
+    }).catch((pushError) => console.info('Meetup announcement push could not be sent:', pushError.message))
+  }
 }
 
 export async function joinMeetup(id) {
   const { error } = await supabase.rpc('join_meetup', { p_meetup: id })
   if (error) fail(error)
+  supabase.functions.invoke('send-push', { body: { kind: 'meetup_joined', meetupId: id } }).then(({ error: pushError }) => {
+    if (pushError) console.info('Meetup host push could not be sent:', pushError.message)
+  }).catch((pushError) => console.info('Meetup host push could not be sent:', pushError.message))
 }
 
 export async function leaveMeetup(id) {

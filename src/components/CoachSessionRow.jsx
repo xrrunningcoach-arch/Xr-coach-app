@@ -224,18 +224,23 @@ export function EvaluationBox({ sessionId, evaluations, onAdded }) {
 
   async function handleAdd() {
     setSaving(true)
-    const { error } = await supabase.from('session_evaluations').insert({
+    const { data: evaluation, error } = await supabase.from('session_evaluations').insert({
       session_id: sessionId,
       coach_id: user.id,
       rating: Number(rating),
       comment,
-    })
+    }).select('id').single()
     setSaving(false)
     if (error) {
       ui.error(error.message)
       return
     }
     setComment('')
+    if (evaluation?.id) {
+      supabase.functions.invoke('send-push', { body: { kind: 'evaluation', evaluationId: evaluation.id } }).then(({ error: pushError }) => {
+        if (pushError) console.info('Evaluation push could not be sent:', pushError.message)
+      }).catch((pushError) => console.info('Evaluation push could not be sent:', pushError.message))
+    }
     onAdded()
   }
 
