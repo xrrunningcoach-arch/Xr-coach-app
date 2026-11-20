@@ -44,6 +44,12 @@ export default function Layout({ children, wide = false }) {
       : '/coach'
 
   useEffect(() => {
+    const openAccount = () => setAccountOpen(true)
+    window.addEventListener('xr:open-account', openAccount)
+    return () => window.removeEventListener('xr:open-account', openAccount)
+  }, [])
+
+  useEffect(() => {
     if (!accountOpen) return undefined
     const onKeyDown = (event) => { if (event.key === 'Escape') setAccountOpen(false) }
     const previousOverflow = document.body.style.overflow
@@ -110,7 +116,7 @@ export default function Layout({ children, wide = false }) {
               </>
             )}
           </div>
-          {profile && <button type="button" onClick={() => setAccountOpen(true)} aria-label={t('mobile.openAccount')} aria-haspopup="dialog" aria-expanded={accountOpen} className="md:hidden grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-mist bg-surface text-navy hover:border-brand">
+          {profile && pathname !== '/atleta' && <button type="button" onClick={() => setAccountOpen(true)} aria-label={t('mobile.openAccount')} aria-haspopup="dialog" aria-expanded={accountOpen} className="md:hidden grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-mist bg-surface text-navy hover:border-brand">
             <IconUser width={21} height={21} />
           </button>}
         </div>

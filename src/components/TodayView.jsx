@@ -10,7 +10,7 @@ import SessionCard from './SessionCard'
 import RpeSelector from './RpeSelector'
 import { buildSubmitParams } from '../lib/sessionLog'
 import StatusBadge from './StatusBadge'
-import { IconCheck } from './icons'
+import { IconCheck, IconUser } from './icons'
 
 // Registro en 3 toques: esfuerzo (0-10) + enlace + notas, y «completada».
 // Usa el mismo RPC (submit_session) que la tarjeta completa.
@@ -179,11 +179,22 @@ export default function TodayView({ today, profile, plan, race, sessions, discip
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto md:mx-0">
-      <header className="xr-rise">
-        <p className="font-mono text-xs uppercase text-navy-light">{longDayTitle(today)}</p>
-        <h1 className="font-display text-3xl sm:text-4xl text-navy mt-1">
-          {firstName ? t('today.hello', { name: firstName }) : t('today.title')}
-        </h1>
+        <header className="xr-rise flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-xs uppercase text-navy-light">{longDayTitle(today)}</p>
+            <h1 className="font-display text-3xl sm:text-4xl text-navy mt-1">
+              {firstName ? t('today.hello', { name: firstName }) : t('today.title')}
+            </h1>
+          </div>
+          {profile && <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('xr:open-account'))}
+            aria-label={t('mobile.openAccount')}
+            aria-haspopup="dialog"
+            className="md:hidden grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-brand bg-brand text-navy shadow-sm transition hover:bg-brand-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+          >
+            <IconUser width={22} height={22} />
+          </button>}
       </header>
 
       {unread > 0 && (

@@ -25,6 +25,7 @@ import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
 import { ui } from '../ui/ui'
 import { useT } from '../i18n'
+import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget } from '../components/icons'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
@@ -151,7 +152,32 @@ export default function CoachAthlete() {
         )}
       </div>
 
-      <div className="flex gap-2 border-b border-mist overflow-x-auto">
+      <nav aria-label={t('nav.coachSections')} className="grid grid-cols-2 gap-2 sm:hidden">
+        {[
+          ['resumen', t('ed.tab.summary'), IconHome],
+          ['plan', t('ed.tab.plan'), IconFlag],
+          ['calendario', t('nav.calendar'), IconCalendar],
+          ['zonas', t('nav.zones'), IconHeart],
+          ['objetivos', t('nav.goals'), IconTarget],
+          ['tests', t('nav.tests'), IconChart],
+          ['chat', t('nav.chatShort'), IconChat],
+        ].map(([id, label, Icon]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            aria-pressed={tab === id}
+            className={`flex min-h-[54px] min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold leading-tight transition-colors ${
+              tab === id ? 'border-brand bg-brand text-navy shadow-sm' : 'border-mist bg-surface text-slate hover:border-brand hover:text-navy'
+            }`}
+          >
+            <Icon className="shrink-0" width={19} height={19} />
+            <span className="min-w-0">{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <nav aria-label={t('nav.coachSections')} className="hidden gap-2 border-b border-mist sm:flex">
         {[
           ['resumen', t('ed.tab.summary')],
           ['plan', t('ed.tab.plan')],
@@ -161,17 +187,12 @@ export default function CoachAthlete() {
           ['tests', t('nav.tests')],
           ['chat', t('nav.chatShort')],
         ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
-              tab === id ? 'border-red text-red' : 'border-transparent text-slate hover:text-navy'
-            }`}
-          >
+          <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id}
+            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${tab === id ? 'border-red text-red' : 'border-transparent text-slate hover:text-navy'}`}>
             {label}
           </button>
         ))}
-      </div>
+      </nav>
 
       {tab === 'resumen' && (
         <AthleteSummary
