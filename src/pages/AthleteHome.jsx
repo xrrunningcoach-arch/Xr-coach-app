@@ -86,7 +86,7 @@ export default function AthleteHome() {
 
         {section === 'quedadas' && <QuedadasView draftSession={meetupDraftSession} onDraftConsumed={() => setMeetupDraftSession(null)} />}
 
-        {section === 'conexiones' && <ConnectionsView onNavigate={setSection} />}
+        {section === 'conexiones' && <ConnectionsView onNavigate={setSection} userId={user.id} />}
 
         {section === 'perfil' && (
           <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">

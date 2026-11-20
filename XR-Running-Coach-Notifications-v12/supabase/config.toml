@@ -1,0 +1,19 @@
+project_id = "xr-running-coach-app"
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-training-reminders]
+verify_jwt = false
+
+[functions.intervals-oauth-start]
+verify_jwt = false
+
+[functions.intervals-oauth-callback]
+verify_jwt = false
+
+[functions.intervals-webhook]
+verify_jwt = false
+
+[functions.intervals-disconnect]
+verify_jwt = false

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="eu" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>XR Running Coach</title>
+  <meta name="description" content="Tu plan de entrenamiento de running, siempre a mano." />
+  <meta name="theme-color" content="#08130f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="XR Coach" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <script>
+    // Aplica tema e idioma ANTES de pintar (evita el parpadeo claro/oscuro).
+    (function () {
+      try {
+        var t = localStorage.getItem('xr.theme');
+        if (t !== 'light' && t !== 'dark') t = 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        var l = localStorage.getItem('xr.lang');
+        if (l === 'eu' || l === 'es') document.documentElement.setAttribute('lang', l);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'light' ? '#eef4f1' : '#08130f');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
