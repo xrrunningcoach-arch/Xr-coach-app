@@ -159,9 +159,9 @@ export default function CoachHome() {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <h1 className="font-display text-3xl text-navy">{t('coach.title')}</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
+          <h1 className="min-w-0 font-display text-2xl leading-tight text-navy sm:text-3xl">{t('coach.title')}</h1>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event('xr:open-account'))}
@@ -172,7 +172,7 @@ export default function CoachHome() {
             <IconUser width={22} height={22} />
           </button>
         </div>
-        <button onClick={() => setShowInvite(true)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md bg-brand px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-deep sm:px-4">
+        <button type="button" onClick={() => setShowInvite(true)} className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-navy shadow-sm transition hover:bg-brand-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy sm:w-auto sm:rounded-md sm:py-2.5 sm:text-white">
           <IconUsers width={18} height={18} /> {t('coach.invite')}
         </button>
       </div>
