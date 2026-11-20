@@ -1,0 +1,82 @@
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthProvider'
+import LoadingScreen from './LoadingScreen'
+import { useT } from '../i18n'
+
+export default function ProtectedRoute({ role, children }) {
+  const { user, profile, loading, authError, refreshProfile, signOut } = useAuth()
+  const t = useT()
+
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+
+  // Hay sesión pero el perfil no se pudo cargar: no hay rol al que redirigir
+  // de forma fiable, así que se ofrece reintentar o salir en vez de rebotar
+  // entre rutas protegidas.
+  if (authError || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-5">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="text-sm text-red" role="alert">
+            {authError || t('pr.loadError')}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={refreshProfile}
+              className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-sm"
+            >
+              {t('pr.retry')}
+            </button>
+            <button
+              onClick={signOut}
+              className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red"
+            >
+              {t('common.signOut')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Atleta archivado por el entrenador: no puede usar la app hasta que lo reactive.
+  if (profile.role === 'athlete' && profile.is_active === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-5">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="text-sm text-navy" role="status">
+            {t('pr.paused')}
+          </p>
+          <button
+            onClick={signOut}
+            className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red"
+          >
+            {t('common.signOut')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Entrenador que aún no ha aprobado el administrador.
+  if (profile.role === 'coach' && profile.coach_approved === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-5">
+        <div className="max-w-sm text-center space-y-4">
+          <h1 className="font-display text-xl text-navy">{t('auth.pendingTitle')}</h1>
+          <p className="text-sm text-slate" role="status">{t('auth.pendingBody')}</p>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={refreshProfile} className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-sm">{t('auth.pendingRetry')}</button>
+            <button onClick={signOut} className="px-4 py-2 text-sm font-semibold text-slate border border-mist rounded-sm hover:border-red hover:text-red">{t('auth.pendingSignOut')}</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (role && profile.role !== role) {
+    const fallback = profile.role === 'coach' ? '/coach' : '/atleta'
+    return <Navigate to={fallback} replace />
+  }
+  return children
+}

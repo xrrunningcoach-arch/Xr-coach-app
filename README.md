@@ -1,4 +1,4 @@
-# XR Running Coach — build v12 (base de aplicación v4)
+# XR Running Coach — build v13 (base de aplicación v4)
 
 Plataforma de entrenamiento para un entrenador y sus atletas: planes por macro y mesociclos,
 calendario, registro de sesiones con RPE, estadísticas, zonas de FC, biblioteca de plantillas,
@@ -97,6 +97,10 @@ Cada vez que hagas `git push` a `main`, la web se reconstruye y actualiza sola.
 ## Sincronizar actividades con Intervals.icu
 
 La carpeta incluye una integración opcional para que cada atleta autorice su cuenta de Intervals.icu, importe actividades de carrera recientes y reciba nuevas actividades mediante webhook. Requiere aplicar `supabase/migrations/0020_intervals_icu_integration.sql`, configurar secretos de Supabase y desplegar las cuatro funciones `intervals-*`. Sigue todos los pasos de [`docs/INTEGRACION_INTERVALS_ICU.md`](docs/INTEGRACION_INTERVALS_ICU.md) antes de habilitar la conexión en producción.
+
+## Identidad visual v13
+
+Se actualizó el monograma XR y se añadieron versiones vectoriales del símbolo y del logotipo horizontal. La marca aparece en la cabecera, las pantallas de acceso, el favicon y los iconos instalables.
 
 ---
 
