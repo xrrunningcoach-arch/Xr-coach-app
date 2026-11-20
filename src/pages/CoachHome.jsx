@@ -6,7 +6,7 @@ import { useT } from '../i18n'
 import LoadingScreen from '../components/LoadingScreen'
 import InvitePanel from '../components/InvitePanel'
 import PendingCoaches from '../components/PendingCoaches'
-import { IconAlert, IconUsers } from '../components/icons'
+import { IconAlert, IconUser, IconUsers } from '../components/icons'
 import { ui } from '../ui/ui'
 import { addDays, todayISO } from '../lib/dates'
 import { computeCompliance, sortByUrgency } from '../lib/compliance'
@@ -159,9 +159,20 @@ export default function CoachHome() {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="font-display text-3xl text-navy">{t('coach.title')}</h1>
-        <button onClick={() => setShowInvite(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-md">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="font-display text-3xl text-navy">{t('coach.title')}</h1>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('xr:open-account'))}
+            aria-label={t('mobile.openAccount')}
+            aria-haspopup="dialog"
+            className="md:hidden grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-brand bg-brand text-navy shadow-sm transition hover:bg-brand-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+          >
+            <IconUser width={22} height={22} />
+          </button>
+        </div>
+        <button onClick={() => setShowInvite(true)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md bg-brand px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-deep sm:px-4">
           <IconUsers width={18} height={18} /> {t('coach.invite')}
         </button>
       </div>

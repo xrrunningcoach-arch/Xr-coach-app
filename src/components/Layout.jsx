@@ -116,7 +116,7 @@ export default function Layout({ children, wide = false }) {
               </>
             )}
           </div>
-          {profile && pathname !== '/atleta' && <button type="button" onClick={() => setAccountOpen(true)} aria-label={t('mobile.openAccount')} aria-haspopup="dialog" aria-expanded={accountOpen} className="md:hidden grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-mist bg-surface text-navy hover:border-brand">
+          {profile && pathname !== '/atleta' && pathname !== '/coach' && <button type="button" onClick={() => setAccountOpen(true)} aria-label={t('mobile.openAccount')} aria-haspopup="dialog" aria-expanded={accountOpen} className="md:hidden grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-mist bg-surface text-navy hover:border-brand">
             <IconUser width={21} height={21} />
           </button>}
         </div>
