@@ -1,0 +1,7 @@
+project_id = "xr-running-coach-app"
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-training-reminders]
+verify_jwt = false

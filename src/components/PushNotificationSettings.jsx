@@ -28,6 +28,9 @@ export default function PushNotificationSettings({ userId }) {
   const [active, setActive] = useState(false)
   const [migrationMissing, setMigrationMissing] = useState(false)
   const [busy, setBusy] = useState(true)
+  const [savingPreferences, setSavingPreferences] = useState(false)
+  const [reminderHour, setReminderHour] = useState(8)
+  const [hidePreview, setHidePreview] = useState(false)
 
   const refresh = useCallback(async () => {
     const canPush = supportsPush()
@@ -35,17 +38,18 @@ export default function PushNotificationSettings({ userId }) {
     if (!canPush) { setBusy(false); return }
     setPermission(Notification.permission)
     try {
-      const registration = await navigator.serviceWorker.getRegistration()
-      if (!registration) { setActive(false); setBusy(false); return }
-      const subscription = await registration.pushManager.getSubscription()
-      if (!subscription) { setActive(false); setBusy(false); return }
-      const { data, error } = await supabase.from('push_subscriptions').select('id').eq('user_id', userId).eq('endpoint', subscription.endpoint).maybeSingle()
+      const { data: subscriptions, error } = await supabase.from('push_subscriptions').select('id,endpoint,reminder_hour,hide_preview').eq('user_id', userId)
       if (error) {
         if (/push_subscriptions|schema cache|does not exist/i.test(error.message)) setMigrationMissing(true)
       } else {
         setMigrationMissing(false)
-        setActive(!!data)
+        const preference = subscriptions?.[0]
+        setReminderHour(preference?.reminder_hour ?? 8)
+        setHidePreview(preference?.hide_preview ?? false)
       }
+      const registration = await navigator.serviceWorker.getRegistration()
+      const subscription = registration ? await registration.pushManager.getSubscription() : null
+      setActive(!!subscription && (error ? true : !!subscriptions?.some((row) => row.endpoint === subscription.endpoint)))
     } catch {
       setActive(false)
     }
@@ -77,6 +81,8 @@ export default function PushNotificationSettings({ userId }) {
         subscription: subscription.toJSON(),
         user_agent: navigator.userAgent.slice(0, 500),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid',
+        reminder_hour: reminderHour,
+        hide_preview: hidePreview,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,endpoint' })
       if (error) throw error
@@ -102,6 +108,25 @@ export default function PushNotificationSettings({ userId }) {
     setBusy(false)
   }
 
+  async function savePreferences(next) {
+    if (savingPreferences || migrationMissing) return
+    setSavingPreferences(true)
+    try {
+      const { error } = await supabase.from('push_subscriptions').update({
+        reminder_hour: next.reminder_hour ?? reminderHour,
+        hide_preview: next.hide_preview ?? hidePreview,
+        updated_at: new Date().toISOString(),
+      }).eq('user_id', userId)
+      if (error) throw error
+      if (next.reminder_hour !== undefined) setReminderHour(next.reminder_hour)
+      if (next.hide_preview !== undefined) setHidePreview(next.hide_preview)
+      ui.success(t('push.preferencesSaved'))
+    } catch (error) {
+      ui.error(t('push.enableError', { msg: error.message || t('common.error') }))
+    }
+    setSavingPreferences(false)
+  }
+
   const setupMissing = supported && !VAPID_PUBLIC_KEY
 
   return <section className="rounded-xl border border-mist bg-bg-dim/70 p-4">
@@ -115,9 +140,22 @@ export default function PushNotificationSettings({ userId }) {
           {active ? t('push.active') : !supported ? t('push.unsupported') : setupMissing ? t('push.setupMissing') : migrationMissing ? t('push.migrationMissing') : permission === 'denied' ? t('push.denied') : t('push.help')}
         </p>
         {migrationMissing && <p className="mt-2 rounded-md bg-surface p-2 text-xs text-navy">{t('push.migrationSteps')}</p>}
-        {supported && VAPID_PUBLIC_KEY && <button type="button" onClick={active ? disable : enable} disabled={busy || migrationMissing} className={`mt-3 min-h-11 rounded-md px-4 text-sm font-bold transition disabled:opacity-50 ${active ? 'border border-mist bg-surface text-slate hover:border-red hover:text-red' : 'bg-brand text-navy hover:bg-brand-deep'}`}>
+        {supported && VAPID_PUBLIC_KEY && <button type="button" onClick={active ? disable : enable} disabled={busy || (migrationMissing && !active)} className={`mt-3 min-h-11 rounded-md px-4 text-sm font-bold transition disabled:opacity-50 ${active ? 'border border-mist bg-surface text-slate hover:border-red hover:text-red' : 'bg-brand text-navy hover:bg-brand-deep'}`}>
           {busy ? t('common.loading') : active ? t('push.turnOff') : t('push.turnOn')}
         </button>}
+        {active && !migrationMissing && <div className="mt-4 grid gap-3 border-t border-mist pt-4 sm:grid-cols-2">
+          <label className="grid gap-1 text-xs font-semibold text-slate">
+            <span>{t('push.reminderHour')}</span>
+            <select value={reminderHour} disabled={savingPreferences} onChange={(event) => savePreferences({ reminder_hour: Number(event.target.value) })} className="min-h-11 rounded-md border border-mist bg-surface px-3 text-sm text-navy">
+              {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, '0')}:00</option>)}
+            </select>
+          </label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-mist bg-surface px-3 text-xs leading-relaxed text-slate">
+            <input type="checkbox" checked={hidePreview} disabled={savingPreferences} onChange={(event) => savePreferences({ hide_preview: event.target.checked })} className="h-4 w-4 accent-brand" />
+            <span>{t('push.hidePreview')}</span>
+          </label>
+          <p className="text-xs leading-relaxed text-slate sm:col-span-2">{t('push.preferenceScope')}{savingPreferences ? ` ${t('common.loading')}` : ''}</p>
+        </div>}
       </div>
     </div>
   </section>

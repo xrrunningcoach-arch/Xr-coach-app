@@ -117,7 +117,7 @@ Deno.serve(async (request) => {
 
   const uniqueRecipients = [...new Set(recipientIds)].filter((id) => id !== user.id)
   if (!uniqueRecipients.length) return Response.json({ sent: 0 }, { headers: corsHeaders })
-  const { data: subscriptions, error: subscriptionError } = await admin.from('push_subscriptions').select('id,user_id,subscription').in('user_id', uniqueRecipients)
+  const { data: subscriptions, error: subscriptionError } = await admin.from('push_subscriptions').select('id,user_id,subscription,hide_preview').in('user_id', uniqueRecipients)
   if (subscriptionError) {
     console.error('Unable to load push subscriptions:', subscriptionError.message)
     return Response.json({ error: 'Unable to load subscriptions' }, { status: 500, headers: corsHeaders })
@@ -134,11 +134,13 @@ Deno.serve(async (request) => {
     return Response.json({ error: 'VAPID configuration is invalid' }, { status: 500, headers: corsHeaders })
   }
 
-  const notification = JSON.stringify({ title, body, url, tag })
   let sent = 0
   let failed = 0
   const expired: string[] = []
   await Promise.all(subscriptions.map(async (row) => {
+    const notification = JSON.stringify(row.hide_preview
+      ? { title: 'XR Running Coach', body: 'Tienes una nueva notificación.', url, tag }
+      : { title, body, url, tag })
     try { await webpush.sendNotification(row.subscription, notification, { TTL: 60 * 60 }); sent += 1 }
     catch (error) {
       const pushError = error as { statusCode?: number; message?: string }
