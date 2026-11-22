@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { fetchAndStoreIntervalsDetails } from '../_shared/intervalsDetails.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +84,15 @@ Deno.serve(async (request) => {
     if (error) {
       console.error('Could not save Intervals sync', error.message)
       return json({ error: 'Could not save imported activities' }, 500)
+    }
+    // Pull each detailed trace once; the shared helper skips activities whose
+    // stream data is already stored. Process serially to stay gentle with API limits.
+    for (const activity of runs) {
+      try {
+        await fetchAndStoreIntervalsDetails(admin, user.id, connection.access_token, String(activity.id))
+      } catch (detailError) {
+        console.error('Could not fetch Intervals activity detail', detailError instanceof Error ? detailError.message : 'unknown error')
+      }
     }
   }
 

@@ -7,6 +7,7 @@ import { formatPace, sessionKm, sessionKmDone } from '../lib/stats'
 import { disciplineColor } from '../lib/disciplineColors'
 import { disciplineName, findDiscipline } from '../lib/disciplines'
 import SessionCard from './SessionCard'
+import IntervalsActivityAnalysis from './IntervalsActivityAnalysis'
 import RpeSelector from './RpeSelector'
 import { buildSubmitParams } from '../lib/sessionLog'
 import StatusBadge from './StatusBadge'
@@ -112,6 +113,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
               session.distance_actual_km > 0 && session.duration_actual_min > 0 ? formatPace(session.duration_actual_min, session.distance_actual_km) : null,
               session.avg_hr_actual ? `${session.avg_hr_actual} bpm` : null].filter(Boolean).join(' · ')}
           </p>
+          <IntervalsActivityAnalysis activityId={session.intervals_activity_id} />
         </div>}
 
         {pending && quick && <QuickLog session={session} onSaved={onUpdated} />}
@@ -250,6 +252,7 @@ export default function TodayView({ today, profile, plan, race, sessions, interv
               km > 0 && minutes > 0 ? formatPace(minutes, km) : null,
               activity.average_hr ? `${activity.average_hr} bpm` : null,
             ].filter(Boolean).join(' · ')}</p>
+            <IntervalsActivityAnalysis activityId={activity.provider_activity_id} />
           </article>
         })}
       </section>}

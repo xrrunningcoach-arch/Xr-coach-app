@@ -96,7 +96,7 @@ Cada vez que hagas `git push` a `main`, la web se reconstruye y actualiza sola.
 
 ## Sincronizar actividades con Intervals.icu
 
-La carpeta incluye una integración opcional para que cada atleta autorice su cuenta de Intervals.icu, importe actividades de carrera recientes y reciba nuevas actividades mediante webhook. Requiere aplicar `supabase/migrations/0020_intervals_icu_integration.sql`, configurar secretos de Supabase y desplegar las cuatro funciones `intervals-*`. Sigue todos los pasos de [`docs/INTEGRACION_INTERVALS_ICU.md`](docs/INTEGRACION_INTERVALS_ICU.md) antes de habilitar la conexión en producción.
+La integración opcional de Intervals.icu sincroniza actividades, completa sesiones planificadas del día y muestra gráficos de pulso, ritmo, altitud y cadencia, parciales por km e intervalos cuando el origen proporciona esos datos. Para instalaciones existentes, aplica las migraciones 0021 y 0022 y despliega `intervals-webhook`, `intervals-sync` e `intervals-activity-detail`. Sigue [`docs/INTERVALS_AUTO_SYNC.md`](docs/INTERVALS_AUTO_SYNC.md) y [`docs/INTEGRACION_INTERVALS_ICU.md`](docs/INTEGRACION_INTERVALS_ICU.md).
 
 ## Identidad visual v13
 

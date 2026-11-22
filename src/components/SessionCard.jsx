@@ -9,6 +9,7 @@ import { useT } from '../i18n'
 import { ui } from '../ui/ui'
 import ExerciseList from './ExerciseList'
 import { formatPace } from '../lib/stats'
+import IntervalsActivityAnalysis from './IntervalsActivityAnalysis'
 
 // Tarjeta de actividad del atleta. Movida SIN CAMBIOS desde AthleteDashboard.jsx
 // (mismo HTML y mismas clases CSS) para poder renderizarla dentro del
@@ -68,6 +69,7 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
               {session.avg_hr_actual != null ? ` · ${t('card.avgHrDone', { bpm: session.avg_hr_actual })}` : ''}
             </p>
           )}
+          {session.intervals_activity_id && <IntervalsActivityAnalysis activityId={session.intervals_activity_id} />}
         </div>
         <button
           onClick={() => setOpen((v) => !v)}

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { fetchAndStoreIntervalsDetails } from '../_shared/intervalsDetails.ts'
 
 function readKey(mapName: string, legacyName: string) {
   try {
@@ -40,13 +41,13 @@ Deno.serve(async (request) => {
   for (const event of payload.events) {
     if (!['ACTIVITY_UPLOADED', 'ACTIVITY_ANALYZED', 'ACTIVITY_UPDATED'].includes(event?.type) || !event.activity?.id || !event.athlete_id) continue
     const { data: connection } = await admin.from('intervals_connections')
-      .select('profile_id').eq('intervals_athlete_id', String(event.athlete_id)).maybeSingle()
+      .select('profile_id,access_token').eq('intervals_athlete_id', String(event.athlete_id)).maybeSingle()
     if (!connection) continue
 
     const activity = event.activity
     const activityType = String(activity.type || activity.sport || '')
-    // The MVP stores running activities only, preserving the complete summary
-    // for later mapping to XR's planned sessions.
+    // Keep running activities only; the database trigger associates the
+    // summary to its planned session and the helper fetches detailed streams.
     if (!/run|trail/i.test(activityType)) continue
     const result = await admin.from('intervals_activities').upsert({
       profile_id: connection.profile_id,
@@ -68,6 +69,11 @@ Deno.serve(async (request) => {
       return Response.json({ error: 'Could not store activity' }, { status: 500 })
     }
     stored++
+    try {
+      await fetchAndStoreIntervalsDetails(admin, connection.profile_id, connection.access_token, String(activity.id), ['ACTIVITY_UPDATED', 'ACTIVITY_ANALYZED'].includes(event.type))
+    } catch (detailError) {
+      console.error('Could not fetch Intervals activity streams', detailError instanceof Error ? detailError.message : 'unknown error')
+    }
   }
   return Response.json({ ok: true, stored })
 })

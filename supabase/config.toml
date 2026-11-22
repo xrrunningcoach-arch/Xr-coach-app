@@ -18,5 +18,8 @@ verify_jwt = false
 [functions.intervals-sync]
 verify_jwt = false
 
+[functions.intervals-activity-detail]
+verify_jwt = false
+
 [functions.intervals-disconnect]
 verify_jwt = false
