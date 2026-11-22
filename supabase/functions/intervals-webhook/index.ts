@@ -20,20 +20,25 @@ function constantTimeEqual(a: string, b: string) {
 
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 })
-  const expected = Deno.env.get('INTERVALS_WEBHOOK_AUTHORIZATION')
-  const received = request.headers.get('Authorization') || ''
-  if (!expected || !constantTimeEqual(received, expected)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceKey = readKey('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY') || ''
   if (!supabaseUrl || !serviceKey) return Response.json({ error: 'Server not configured' }, { status: 503 })
   const payload = await request.json().catch(() => null)
   if (!payload || !Array.isArray(payload.events)) return Response.json({ error: 'Invalid webhook payload' }, { status: 400 })
 
+  // Intervals supports a custom Authorization header and a webhook secret
+  // included in the JSON payload. Accept whichever was configured.
+  const expectedHeader = Deno.env.get('INTERVALS_WEBHOOK_AUTHORIZATION') || ''
+  const expectedBody = Deno.env.get('INTERVALS_WEBHOOK_SECRET') || ''
+  const receivedHeader = request.headers.get('Authorization') || ''
+  const headerOk = !!expectedHeader && constantTimeEqual(receivedHeader, expectedHeader)
+  const bodyOk = !!expectedBody && typeof payload.secret === 'string' && constantTimeEqual(payload.secret, expectedBody)
+  if (!headerOk && !bodyOk) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   let stored = 0
   for (const event of payload.events) {
-    if (!['ACTIVITY_UPLOADED', 'ACTIVITY_ANALYZED'].includes(event?.type) || !event.activity?.id || !event.athlete_id) continue
+    if (!['ACTIVITY_UPLOADED', 'ACTIVITY_ANALYZED', 'ACTIVITY_UPDATED'].includes(event?.type) || !event.activity?.id || !event.athlete_id) continue
     const { data: connection } = await admin.from('intervals_connections')
       .select('profile_id').eq('intervals_athlete_id', String(event.athlete_id)).maybeSingle()
     if (!connection) continue

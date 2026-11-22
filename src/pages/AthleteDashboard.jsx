@@ -27,6 +27,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
   const [race, setRace] = useState(null)
   const [mesocycles, setMesocycles] = useState([])
   const [sessions, setSessions] = useState([])
+  const [intervalsActivities, setIntervalsActivities] = useState([])
   const [milestones, setMilestones] = useState([])
   const [hrZones, setHrZones] = useState(null)
   const [manualZones, setManualZones] = useState({})
@@ -43,6 +44,34 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  // Keep the athlete's Today screen current while open. Intervals webhooks are
+  // the primary path; this hourly catch-up covers missed webhook deliveries.
+  useEffect(() => {
+    if (!user) return undefined
+    const channel = supabase.channel(`intervals-activities-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intervals_activities', filter: `profile_id=eq.${user.id}` }, () => loadData(true))
+      .subscribe()
+    let timer
+    const sync = async () => {
+      if (section !== 'hoy') return
+      try {
+        const { data, error } = await supabase.functions.invoke('intervals-sync', { body: {} })
+        if (error) throw error
+        if (data?.synced > 0) await loadData(true)
+      } catch (error) {
+        console.warn('Intervals automatic sync was deferred:', error?.message || error)
+      }
+    }
+    sync()
+    timer = window.setInterval(sync, 60 * 60 * 1000)
+    return () => {
+      window.clearInterval(timer)
+      supabase.removeChannel(channel)
+    }
+    // loadData is intentionally stable for this subscription lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, section])
+
   // Al entrar en «Objetivos» se refrescan los datos: así se ven al instante
   // las metas que se acaban de editar en «Mi perfil».
   useEffect(() => {
@@ -58,6 +87,13 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
     setError(null)
 
     if (disciplines.length === 0) setDisciplines(await fetchDisciplines())
+
+    const { data: importedActivities } = await supabase.from('intervals_activities')
+      .select('provider_activity_id,session_id,activity_local_date,activity_type,activity_name,start_date_local,distance_m,moving_time_s,elapsed_time_s,average_hr,max_hr,source')
+      .eq('profile_id', user.id)
+      .order('start_date_local', { ascending: false })
+      .limit(60)
+    setIntervalsActivities(importedActivities || [])
 
     // Zonas manuales y perfil: no dependen del plan (si aún no existen las
     // tablas de la migración 0004, simplemente quedan vacías).
@@ -137,7 +173,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
 
   const hasManualZones = Object.keys(manualZones).length > 0 || !!thresholdTest
 
-  if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones)) {
+  if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones) && !(section === 'hoy' && intervalsActivities.length > 0)) {
     return (
       <div className="bg-surface border border-mist rounded-sm p-8 text-center">
         <h2 className="font-display text-xl text-navy mb-2">{t('today.noPlanTitle')}</h2>
@@ -172,6 +208,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
           plan={plan}
           race={race}
           sessions={sessions}
+          intervalsActivities={intervalsActivities}
           disciplines={disciplines}
           evaluationsBySession={evaluationsBySession}
           unread={unread}

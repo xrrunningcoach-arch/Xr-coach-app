@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import { useT } from '../i18n'
 import { ui } from '../ui/ui'
 import { addDays, diffDays, longDayTitle, mondayOf } from '../lib/dates'
-import { sessionKm, sessionKmDone } from '../lib/stats'
+import { formatPace, sessionKm, sessionKmDone } from '../lib/stats'
 import { disciplineColor } from '../lib/disciplineColors'
 import { disciplineName, findDiscipline } from '../lib/disciplines'
 import SessionCard from './SessionCard'
@@ -104,6 +104,15 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
         </div>
         {session.description && <p className="text-sm text-ink/90 mt-2 whitespace-pre-line">{session.description}</p>}
         {meta.length > 0 && <p className="font-mono text-xs text-navy-light mt-2">{meta.join(' · ')}</p>}
+        {session.intervals_activity_id && <div className="mt-3 rounded-lg bg-brand/15 border border-brand/40 p-3">
+          <p className="font-mono text-[11px] uppercase font-semibold text-navy">{t('intervals.synced')}</p>
+          <p className="mt-1 text-sm text-ink">
+            {[session.distance_actual_km != null ? `${Number(session.distance_actual_km).toFixed(2)} km` : null,
+              session.duration_actual_min != null ? `${Math.round(session.duration_actual_min)} min` : null,
+              session.distance_actual_km > 0 && session.duration_actual_min > 0 ? formatPace(session.duration_actual_min, session.distance_actual_km) : null,
+              session.avg_hr_actual ? `${session.avg_hr_actual} bpm` : null].filter(Boolean).join(' · ')}
+          </p>
+        </div>}
 
         {pending && quick && <QuickLog session={session} onSaved={onUpdated} />}
 
@@ -126,7 +135,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
 }
 
 // Pantalla «Hoy»: lo que el atleta necesita al abrir la app, en una sola columna.
-export default function TodayView({ today, profile, plan, race, sessions, disciplines, evaluationsBySession, unread, onUpdated, onNavigate }) {
+export default function TodayView({ today, profile, plan, race, sessions, intervalsActivities = [], disciplines, evaluationsBySession, unread, onUpdated, onNavigate }) {
   const t = useT()
 
   const data = useMemo(() => {
@@ -176,6 +185,9 @@ export default function TodayView({ today, profile, plan, race, sessions, discip
   }
 
   const pct = data.week.total ? Math.round((data.week.done / data.week.total) * 100) : 0
+  const importedToday = intervalsActivities.filter((activity) =>
+    !activity.session_id && (activity.activity_local_date || activity.start_date_local?.slice(0, 10)) === today
+  )
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto md:mx-0">
@@ -223,6 +235,24 @@ export default function TodayView({ today, profile, plan, race, sessions, discip
           <p className="text-sm text-slate mt-1">{t('today.restBody')}</p>
         </section>
       )}
+
+      {importedToday.length > 0 && <section className="space-y-3" aria-label={t('intervals.imported')}>
+        <h2 className="font-display text-xl text-navy">{t('intervals.imported')}</h2>
+        {importedToday.map((activity) => {
+          const km = Number(activity.distance_m || 0) / 1000
+          const minutes = Number(activity.moving_time_s || 0) / 60
+          return <article key={activity.provider_activity_id} className="bg-brand/10 border border-brand/50 rounded-xl p-4">
+            <p className="font-mono text-[11px] uppercase text-navy-light">Intervals.icu · {activity.activity_type || t('intervals.run')}</p>
+            <h3 className="font-display text-lg text-navy mt-1">{activity.activity_name || t('intervals.run')}</h3>
+            <p className="text-sm text-ink mt-2">{[
+              km > 0 ? `${km.toFixed(2)} km` : null,
+              minutes > 0 ? `${Math.round(minutes)} min` : null,
+              km > 0 && minutes > 0 ? formatPace(minutes, km) : null,
+              activity.average_hr ? `${activity.average_hr} bpm` : null,
+            ].filter(Boolean).join(' · ')}</p>
+          </article>
+        })}
+      </section>}
 
       {onNavigate && <button type="button" onClick={() => onNavigate('quedadas')} className="group w-full rounded-xl border border-brand/60 bg-brand/10 p-4 text-left transition hover:border-brand hover:bg-brand/20 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-5">
         <span><span className="block font-display text-xl text-navy">{t('today.findGroup')}</span><span className="mt-1 block text-sm text-slate">{t('today.findGroupHelp')}</span></span>
