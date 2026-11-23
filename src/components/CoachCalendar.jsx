@@ -45,7 +45,7 @@ function sortSessions(list) {
 // el atleta, pero editable: "+" crea una sesión en ese día, arrastrar una
 // sesión a otro día la mueve, y pulsar una sesión abre su editor completo.
 // Todo lo que se coloca aquí aparece en el calendario del atleta.
-export default function CoachCalendar({ athlete, plan, sessions, mesocycles, disciplines, milestones, onReload, onSaveSessionToLibrary, focusDate = null, focusKey = null, onShowInPlan }) {
+export default function CoachCalendar({ athlete, athleteId, plan, sessions, mesocycles, disciplines, milestones, manualZones = {}, onReload, onSaveSessionToLibrary, focusDate = null, focusKey = null, onShowInPlan }) {
   const t = useT()
   const today = useToday()
   const [view, setView] = useState('week')
@@ -444,6 +444,8 @@ export default function CoachCalendar({ athlete, plan, sessions, mesocycles, dis
           <CoachSessionRow
             key={selected.id + (selected.updated_at || '')}
             session={selected}
+            athleteId={athleteId || athlete?.id}
+            manualZones={manualZones}
             disciplines={disciplines}
             mesocycles={mesocycles}
             planStart={planStart}

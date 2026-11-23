@@ -23,6 +23,8 @@ import PlanActions from '../components/PlanActions'
 import ThresholdTestForm from '../components/ThresholdTestForm'
 import HrZonesManual from '../components/HrZonesManual'
 import CoachSessionRow from '../components/CoachSessionRow'
+import IntervalsActivityAnalysis from '../components/IntervalsActivityAnalysis'
+import IntervalsWellnessPanel from '../components/IntervalsWellnessPanel'
 import { ui } from '../ui/ui'
 import { useT } from '../i18n'
 import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget } from '../components/icons'
@@ -45,6 +47,7 @@ export default function CoachAthlete() {
   const [thresholdTests, setThresholdTests] = useState([])
   const [milestones, setMilestones] = useState([])
   const [tests, setTests] = useState([])
+  const [intervalsActivities, setIntervalsActivities] = useState([])
   const [disciplines, setDisciplines] = useState([])
   const [tab, setTab] = useState('resumen')
   const [calendarFocus, setCalendarFocus] = useState(null) // { date, key }: lleva el calendario a esa semana
@@ -62,6 +65,9 @@ export default function CoachAthlete() {
 
     const { data: a } = await supabase.from('profiles').select('*').eq('id', athleteId).single()
     setAthlete(a)
+
+    const { data: imported } = await supabase.from('intervals_activities').select('*').eq('profile_id', athleteId).order('start_date_local', { ascending: false }).limit(60)
+    setIntervalsActivities(imported || [])
 
     const { data: raceList } = await supabase.from('races').select('*').order('distance_km')
     setRaces(raceList || [])
@@ -157,9 +163,9 @@ export default function CoachAthlete() {
           ['resumen', t('ed.tab.summary'), IconHome],
           ['plan', t('ed.tab.plan'), IconFlag],
           ['calendario', t('nav.calendar'), IconCalendar],
+          ['actividades', t('coach.intervalsActivities'), IconChart],
+          ['bienestar', t('wellness.title'), IconHeart],
           ['zonas', t('nav.zones'), IconHeart],
-          ['objetivos', t('nav.goals'), IconTarget],
-          ['tests', t('nav.tests'), IconChart],
           ['chat', t('nav.chatShort'), IconChat],
         ].map(([id, label, Icon]) => (
           <button
@@ -182,9 +188,9 @@ export default function CoachAthlete() {
           ['resumen', t('ed.tab.summary')],
           ['plan', t('ed.tab.plan')],
           ['calendario', t('nav.calendar')],
+          ['actividades', t('coach.intervalsActivities')],
+          ['bienestar', t('wellness.title')],
           ['zonas', t('nav.zones')],
-          ['objetivos', t('nav.goals')],
-          ['tests', t('nav.tests')],
           ['chat', t('nav.chatShort')],
         ].map(([id, label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id}
@@ -215,6 +221,8 @@ export default function CoachAthlete() {
         (plan ? (
           <PlanEditor
             plan={plan}
+            athleteId={athlete.id}
+            manualZones={manualZones}
             mesocycles={mesocycles}
             sessions={sessions}
             disciplines={disciplines}
@@ -251,8 +259,10 @@ export default function CoachAthlete() {
       {tab === 'calendario' && plan && (
         <CoachCalendar
           athlete={athlete}
+          athleteId={athlete.id}
           plan={plan}
           sessions={sessions}
+          manualZones={manualZones}
           mesocycles={mesocycles}
           disciplines={disciplines}
           milestones={milestones}
@@ -263,11 +273,17 @@ export default function CoachAthlete() {
           onShowInPlan={() => setTab('plan')}
         />
       )}
-      {tab === 'objetivos' && plan && <MilestonesEditor planId={plan.id} milestones={milestones} onChanged={loadAll} />}
-      {tab === 'tests' && plan && <TestsEditor planId={plan.id} tests={tests} onChanged={loadAll} />}
+      {tab === 'actividades' && <section className="space-y-4">
+        <header><h2 className="font-display text-2xl text-navy">{t('coach.intervalsActivities')}</h2><p className="text-sm text-slate">{t('coach.intervalsActivitiesHelp')}</p></header>
+        {intervalsActivities.length === 0 ? <p className="rounded-xl border border-mist bg-surface p-5 text-sm text-slate">{t('coach.noIntervalsActivities')}</p> : intervalsActivities.map((activity) => <article key={activity.provider_activity_id} className="rounded-xl border border-mist bg-surface p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-display text-lg text-navy">{activity.activity_name || activity.activity_type || t('intervals.run')}</h3><p className="text-xs text-slate">{activity.start_date_local ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(activity.start_date_local)) : ''}</p></div><p className="flex flex-wrap gap-3 font-mono text-xs text-slate">{activity.distance_m != null && <span>{(activity.distance_m / 1000).toFixed(2)} km</span>}{activity.moving_time_s != null && <span>{Math.floor(activity.moving_time_s / 60)} min</span>}{activity.average_hr != null && <span className="text-red-600">{activity.average_hr} bpm</span>}</p></div>
+          <IntervalsActivityAnalysis activityId={activity.provider_activity_id} athleteId={athleteId} />
+        </article>)}
+      </section>}
+      {tab === 'bienestar' && <IntervalsWellnessPanel athleteId={athleteId} readOnly />}
       {tab === 'chat' && <ChatPanel athleteId={athlete.id} otherName={athlete.full_name || athlete.email} />}
 
-      {(tab === 'zonas' || tab === 'objetivos' || tab === 'tests') && !plan && (
+      {tab === 'zonas' && !plan && (
         <p className="text-sm text-slate">{t('ed.needPlan')}</p>
       )}
       {tab === 'calendario' && !plan && (
@@ -520,7 +536,7 @@ function PlanBuilder({ athleteId, coachId, races, disciplines, onCreated }) {
 // ----------------------------------------------------------------------------
 // EDITAR PLAN + SESIONES + EVALUACIÓN
 // ----------------------------------------------------------------------------
-function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, onSaveToLibrary, onShowInCalendar }) {
+function PlanEditor({ plan, athleteId, mesocycles, sessions, disciplines, races, onReload, onSaveToLibrary, onShowInCalendar, manualZones = {} }) {
   const t = useT()
   const weeks = useMemo(() => {
     const byWeek = {}
@@ -647,6 +663,8 @@ function PlanEditor({ plan, mesocycles, sessions, disciplines, races, onReload, 
                 <CoachSessionRow
                   key={s.id}
                   session={s}
+                  athleteId={athleteId}
+                  manualZones={manualZones}
                   disciplines={disciplines}
                   mesocycles={mesocycles}
                   planStart={plan.start_date}
@@ -736,7 +754,7 @@ function HrZonesEditor({ planId, athleteId, coachId, hrZones, manualZones, thres
 
       <ThresholdTestForm athleteId={athleteId} coachId={coachId} today={today} history={thresholdTests} onSaved={onSaved} />
 
-      <ZonesTable maxHr={used} manualZones={previewManual} test={latest} />
+      <ZonesTable maxHr={used} manualZones={previewManual} test={latest} showRpe={false} />
     </div>
   )
 }

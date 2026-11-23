@@ -14,6 +14,7 @@ import { sessionKm, sessionKmDone } from '../lib/stats'
 import { pickMaxHr, sanitizeManualZones } from '../lib/zones'
 import ThresholdsPanel from '../components/ThresholdsPanel'
 import RpeScaleTable from '../components/RpeScaleTable'
+import { ui } from '../ui/ui'
 
 // Datos del plan del atleta. La navegación entre secciones vive ahora en el
 // panel lateral (AthleteHome); este componente recibe la sección activa y
@@ -171,9 +172,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
 
   if (loading) return <LoadingScreen />
 
-  const hasManualZones = Object.keys(manualZones).length > 0 || !!thresholdTest
-
-  if (!plan && section !== 'objetivos' && !(section === 'zonas' && hasManualZones) && !(section === 'hoy' && intervalsActivities.length > 0)) {
+  if (!plan && ['hoy', 'calendario'].includes(section) && !(section === 'hoy' && intervalsActivities.length > 0)) {
     return (
       <div className="bg-surface border border-mist rounded-sm p-8 text-center">
         <h2 className="font-display text-xl text-navy mb-2">{t('today.noPlanTitle')}</h2>
@@ -209,6 +208,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
           race={race}
           sessions={sessions}
           intervalsActivities={intervalsActivities}
+          manualZones={manualZones}
           disciplines={disciplines}
           evaluationsBySession={evaluationsBySession}
           unread={unread}
@@ -225,6 +225,7 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
           disciplines={disciplines}
           evaluationsBySession={evaluationsBySession}
           milestones={milestones}
+          manualZones={manualZones}
           onUpdated={() => loadData(true)}
           onProposeSession={onProposeSession}
         />
@@ -246,12 +247,15 @@ export default function AthleteDashboard({ section = 'hoy', onNavigate, onPropos
           race={race}
           milestones={milestones}
           athleteProfile={athleteProfile}
+          profileId={user.id}
+          basicProfile={profile}
           today={today}
           onGoToProfile={onNavigate ? () => onNavigate('perfil') : undefined}
+          onChanged={() => loadData(true)}
         />
       )}
 
-      {section === 'tests' && <TestsView tests={tests} />}
+      {section === 'tests' && <TestsView tests={tests} plan={plan} onChanged={() => loadData(true)} />}
     </div>
   )
 }
@@ -273,15 +277,32 @@ function HrZonesView({ hrZones, manualZones, test }) {
   return <ZonesTable maxHr={maxHr} manualZones={manualZones} test={test} />
 }
 
-function TestsView({ tests }) {
+function TestsView({ tests, plan, onChanged }) {
   const t = useT()
-  if (!tests.length) return <EmptyState text={t('tests.empty')} />
+  const [form, setForm] = useState({ test_date: '', block_label: '', test_type: '', distance: '', result: '', pace: '', observations: '' })
+  const [saving, setSaving] = useState(false)
+  async function addTest(event) {
+    event.preventDefault()
+    if (!plan) return
+    setSaving(true)
+    const { error } = await supabase.from('tests').insert({ ...form, plan_id: plan.id })
+    setSaving(false)
+    if (error) { ui.error(error.message); return }
+    setForm({ test_date: '', block_label: '', test_type: '', distance: '', result: '', pace: '', observations: '' })
+    onChanged()
+  }
+  async function deleteTest(id) {
+    const { error } = await supabase.from('tests').delete().eq('id', id)
+    if (error) ui.error(error.message)
+    else onChanged()
+  }
   return (
-    <div className="bg-surface border border-mist rounded-sm overflow-x-auto">
-      <table className="w-full text-sm min-w-[720px]">
+    <div className="space-y-5">
+    <div className="rounded-xl border border-mist bg-surface overflow-x-auto">
+      {tests.length === 0 ? <p className="p-5 text-sm text-slate">{t('tests.empty')}</p> : <table className="w-full text-sm min-w-[720px]">
         <thead className="bg-bg-dim">
           <tr>
-            {['date', 'block', 'type', 'distance', 'result', 'pace', 'notes'].map((h) => t('tests.col.' + h)).map((h) => (
+            {['date', 'block', 'type', 'distance', 'result', 'pace', 'notes', 'delete'].map((h) => h === 'delete' ? t('c.delete') : t('tests.col.' + h)).map((h) => (
               <th key={h} className="text-left px-4 py-3 font-mono text-xs text-slate">{h}</th>
             ))}
           </tr>
@@ -296,10 +317,25 @@ function TestsView({ tests }) {
               <td className="px-4 py-3 font-mono">{row.result}</td>
               <td className="px-4 py-3 font-mono">{row.pace}</td>
               <td className="px-4 py-3 text-slate">{row.observations}</td>
+              <td className="px-4 py-3"><button type="button" onClick={() => deleteTest(row.id)} className="text-xs font-semibold text-red">{t('c.delete')}</button></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
+    </div>
+    {plan && <form onSubmit={addTest} className="space-y-3 rounded-xl border border-mist bg-surface p-5">
+      <h3 className="font-display text-lg text-navy">{t('ed.test.add')}</h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <input type="date" value={form.test_date} onChange={(e) => setForm({ ...form, test_date: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+        <input placeholder={t('ed.test.block')} value={form.block_label} onChange={(e) => setForm({ ...form, block_label: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+        <input required placeholder={t('tests.col.type')} value={form.test_type} onChange={(e) => setForm({ ...form, test_type: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+        <input placeholder={t('tests.col.distance')} value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+        <input placeholder={t('tests.col.result')} value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+        <input placeholder={t('tests.col.pace')} value={form.pace} onChange={(e) => setForm({ ...form, pace: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+      </div>
+      <textarea placeholder={t('tests.col.notes')} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} rows={2} className="w-full rounded-md border border-mist px-3 py-2" />
+      <button disabled={saving} className="min-h-11 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-navy disabled:opacity-60">{saving ? t('common.saving') : t('c.add')}</button>
+    </form>}
     </div>
   )
 }

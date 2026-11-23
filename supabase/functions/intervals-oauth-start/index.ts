@@ -55,7 +55,7 @@ Deno.serve(async (request) => {
   const authorize = new URL('https://intervals.icu/oauth/authorize')
   authorize.searchParams.set('client_id', clientId)
   authorize.searchParams.set('redirect_uri', redirectUri)
-  authorize.searchParams.set('scope', 'ACTIVITY:READ')
+  authorize.searchParams.set('scope', 'ACTIVITY:READ,WELLNESS:READ')
   authorize.searchParams.set('state', state)
   authorize.searchParams.set('code_challenge', await sha256(codeVerifier))
   authorize.searchParams.set('code_challenge_method', 'S256')

@@ -4,8 +4,6 @@ import { useT } from '../i18n'
 import ZonesTable from './ZonesTable'
 import { pickMaxHr } from '../lib/zones'
 import AthleteProfileForm from '../pages/AthleteProfileForm'
-import AnamnesisForm, { AnamnesisReadOnly } from './AnamnesisForm'
-import RpeScaleTable from './RpeScaleTable'
 import WeeklyVolumeChart from './WeeklyVolumeChart'
 import MacroMesoPanel from './MacroMesoPanel'
 
@@ -106,55 +104,8 @@ function ProfileCard({ athlete, onReload }) {
   )
 }
 
-function AnamnesisCard({ athlete }) {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
-
-  return (
-    <Card
-      title={t('sum.anamnesis')}
-      action={
-        <div className="flex gap-4">
-          {open && (
-            <button type="button" onClick={() => setEditing((v) => !v)} className={linkBtn}>
-              {editing ? t('sum.viewAnswers') : t('sum.edit')}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setOpen((v) => !v)
-              setEditing(false)
-            }}
-            className={linkBtn}
-          >
-            {open ? t('sum.hide') : t('sum.viewQuestionnaire')}
-          </button>
-        </div>
-      }
-    >
-      {!open ? (
-        <p className="text-sm text-slate">
-          {t('sum.anamnesisIntro')}
-        </p>
-      ) : editing ? (
-        <AnamnesisForm
-          athleteId={athlete.id}
-          basicProfile={athlete}
-          onSaved={() => setRefreshKey((k) => k + 1)}
-        />
-      ) : (
-        <AnamnesisReadOnly athleteId={athlete.id} refreshKey={refreshKey} />
-      )}
-    </Card>
-  )
-}
-
-// Pestaña "Perfil y mesociclos" de la ficha del atleta: a la izquierda el
-// perfil, la anamnesis, la escala RPE y el gráfico de semanas y volumen; a la
-// derecha los macrociclos con sus mesociclos.
+// Coach view: athlete profile and training overview only. The questionnaire
+// and RPE scale stay in the athlete's own profile.
 export default function AthleteSummary({
   athlete,
   plan,
@@ -174,9 +125,7 @@ export default function AthleteSummary({
     <div className="grid lg:grid-cols-2 gap-6 items-start">
       <div className="space-y-6 min-w-0">
         <ProfileCard athlete={athlete} onReload={onReload} />
-        <AnamnesisCard athlete={athlete} />
-        <ZonesTable maxHr={pickMaxHr(thresholdTest?.max_hr, hrZones?.max_hr_real)} manualZones={manualZones} test={thresholdTest} />
-        <RpeScaleTable />
+        <ZonesTable maxHr={pickMaxHr(thresholdTest?.max_hr, hrZones?.max_hr_real)} manualZones={manualZones} test={thresholdTest} showRpe={false} />
         {plan ? (
           <WeeklyVolumeChart sessions={sessions} totalWeeks={plan.duration_weeks} />
         ) : (

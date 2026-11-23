@@ -6,7 +6,7 @@ const paceLabel = (pace) => (pace ? `${formatPaceSec(pace[0])} – ${formatPaceS
 // Tabla única de zonas y umbrales de un atleta: zona, RPE (0-10), pulso, ritmo y
 // aplicación. Muestra solo lo que ha escrito el entrenador; no calcula nada.
 // Si recibe el último test de umbrales (`test`), añade VT1, VT2, vAM y lactato.
-export default function ZonesTable({ maxHr, manualZones, test = null }) {
+export default function ZonesTable({ maxHr, manualZones, test = null, showRpe = true }) {
   const t = useT()
   const zones = resolveZones({ maxHr, manualZones })
   const defined = zones.filter((z) => z.source === 'manual').length
@@ -22,13 +22,13 @@ export default function ZonesTable({ maxHr, manualZones, test = null }) {
           {defined > 0 && maxHr ? ` · ${t('zones.manualCount', { count: defined })}` : ''}
         </span>
       </div>
-      <p className="px-5 pt-4 text-sm text-slate">{t('zones.rpeIntro')}</p>
+      {showRpe && <p className="px-5 pt-4 text-sm text-slate">{t('zones.rpeIntro')}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="text-left">
               <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.zone')}</th>
-              <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.rpe')}</th>
+              {showRpe && <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.rpe')}</th>}
               <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.target')}</th>
               <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.pace')}</th>
               <th className="px-4 py-3 font-mono text-xs text-slate">{t('zones.col.pct')}</th>
@@ -42,7 +42,7 @@ export default function ZonesTable({ maxHr, manualZones, test = null }) {
                   <span className="inline-block w-8 text-center font-mono text-xs font-bold bg-primary text-white rounded-sm py-0.5 mr-2">{z.code}</span>
                   {t(`zone.${z.code}.name`)}
                 </td>
-                <td className="px-4 py-3 font-mono whitespace-nowrap">{z.rpe}</td>
+                {showRpe && <td className="px-4 py-3 font-mono whitespace-nowrap">{z.rpe}</td>}
                 <td className="px-4 py-3 font-mono whitespace-nowrap">{z.range ? `${z.range[0]} - ${z.range[1]} ${bpm}` : '—'}</td>
                 <td className="px-4 py-3 font-mono whitespace-nowrap">{paceLabel(z.pace)}</td>
                 <td className="px-4 py-3 font-mono whitespace-nowrap">{z.pctLabel}</td>

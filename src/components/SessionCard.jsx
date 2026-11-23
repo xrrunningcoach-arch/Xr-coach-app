@@ -14,7 +14,7 @@ import IntervalsActivityAnalysis from './IntervalsActivityAnalysis'
 // Tarjeta de actividad del atleta. Movida SIN CAMBIOS desde AthleteDashboard.jsx
 // (mismo HTML y mismas clases CSS) para poder renderizarla dentro del
 // calendario. Si tocas esta tarjeta, tócala aquí: la usan Semana, Mes y Día.
-export default function SessionRow({ session, discipline, evaluations, onUpdated }) {
+export default function SessionRow({ session, discipline, evaluations, onUpdated, manualZones = {} }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [rpe, setRpe] = useState(session.rpe_actual_value ?? '')
@@ -56,8 +56,8 @@ export default function SessionRow({ session, discipline, evaluations, onUpdated
           <p className="font-mono text-xs text-navy-light mt-1">
             {session.km_estimated ? `${session.km_estimated} km` : ''}
             {session.duration_planned_min ? ` · ${t('today.plannedMin', { min: session.duration_planned_min })}` : ''}
-            {session.rpe_theoretical ? ` · ${t('card.theoretical', { v: session.rpe_theoretical })}` : ''}
           </p>
+          {session.hr_zone_target && <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">{session.hr_zone_target}{manualZones[session.hr_zone_target] ? ` · ${manualZones[session.hr_zone_target].lo}–${manualZones[session.hr_zone_target].hi} bpm` : ''}</p>}
           {discipline && <DisciplineFields discipline={discipline} values={session.metrics} readOnly />}
           {discipline?.metrics_schema?.has_exercises && <ExerciseList sessionId={session.id} />}
           {(session.distance_actual_km != null || session.avg_hr_actual != null) && (

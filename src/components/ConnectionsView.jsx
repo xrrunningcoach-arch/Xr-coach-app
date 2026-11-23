@@ -84,7 +84,7 @@ export default function ConnectionsView({ onNavigate, userId }) {
           </div>
         </div>
         {intervals
-          ? <button type="button" disabled={busy} onClick={disconnectIntervals} className="min-h-11 shrink-0 rounded-lg border border-mist px-4 py-2 text-sm font-semibold text-slate hover:border-red hover:text-red disabled:opacity-60">{busy ? t('common.loading') : t('connections.intervalsDisconnect')}</button>
+          ? <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={connectIntervals} className="min-h-11 shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-navy hover:bg-brand-deep hover:text-white disabled:opacity-60">{busy ? t('common.loading') : t('connections.intervalsRefreshPermissions')}</button><button type="button" disabled={busy} onClick={disconnectIntervals} className="min-h-11 shrink-0 rounded-lg border border-mist px-4 py-2 text-sm font-semibold text-slate hover:border-red hover:text-red disabled:opacity-60">{t('connections.intervalsDisconnect')}</button></div>
           : <button type="button" disabled={busy} onClick={connectIntervals} className="min-h-11 shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-navy hover:bg-brand-deep hover:text-white disabled:opacity-60">{busy ? t('common.loading') : t('connections.intervalsConnect')}</button>}
       </div>
       <p className="mt-4 border-t border-mist pt-3 text-xs leading-relaxed text-slate">{t('connections.intervalsConsent')}</p>

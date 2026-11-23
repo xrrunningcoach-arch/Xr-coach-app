@@ -28,25 +28,33 @@ Deno.serve(async (request) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-  const { activity_id: activityId } = await request.json().catch(() => ({}))
+  const { activity_id: activityId, athlete_id: requestedAthleteId } = await request.json().catch(() => ({}))
   if (typeof activityId !== 'string' || activityId.length > 100) return json({ error: 'Invalid activity id' }, 400)
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
-  const { data: profile } = await admin.from('profiles').select('role,is_active').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'athlete' || profile.is_active === false) return json({ error: 'Athlete account required' }, 403)
+  const { data: profile } = await admin.from('profiles').select('role,is_active,coach_approved').eq('id', user.id).maybeSingle()
+  if (!profile || profile.is_active === false) return json({ error: 'Active account required' }, 403)
+  let ownerId = user.id
+  if (profile.role === 'coach') {
+    if (profile.coach_approved !== true) return json({ error: 'Approved coach account required' }, 403)
+    if (typeof requestedAthleteId !== 'string') return json({ error: 'Athlete id required' }, 400)
+    const { data: athlete } = await admin.from('profiles').select('id,coach_id,role,is_active').eq('id', requestedAthleteId).maybeSingle()
+    if (!athlete || athlete.role !== 'athlete' || athlete.coach_id !== user.id || athlete.is_active === false) return json({ error: 'Athlete access denied' }, 403)
+    ownerId = athlete.id
+  } else if (profile.role !== 'athlete') return json({ error: 'Athlete or assigned coach account required' }, 403)
   const [{ data: activity }, { data: connection }] = await Promise.all([
-    admin.from('intervals_activities').select('provider_activity_id').eq('profile_id', user.id).eq('provider_activity_id', activityId).maybeSingle(),
-    admin.from('intervals_connections').select('access_token').eq('profile_id', user.id).maybeSingle(),
+    admin.from('intervals_activities').select('provider_activity_id').eq('profile_id', ownerId).eq('provider_activity_id', activityId).maybeSingle(),
+    admin.from('intervals_connections').select('access_token').eq('profile_id', ownerId).maybeSingle(),
   ])
   if (!activity || !connection?.access_token) return json({ error: 'Activity or connection not found' }, 404)
   try {
-    await fetchAndStoreIntervalsDetails(admin, user.id, connection.access_token, activityId)
+    await fetchAndStoreIntervalsDetails(admin, ownerId, connection.access_token, activityId)
   } catch (error) {
     console.error('Activity detail request failed', error instanceof Error ? error.message : 'unknown error')
     return json({ error: 'Could not load activity detail from Intervals.icu' }, 502)
   }
   const { data: details, error } = await admin.from('intervals_activity_details')
     .select('streams,intervals,has_streams,details_updated_at')
-    .eq('profile_id', user.id).eq('provider_activity_id', activityId).maybeSingle()
+    .eq('profile_id', ownerId).eq('provider_activity_id', activityId).maybeSingle()
   if (error) return json({ error: 'Could not read saved activity detail' }, 500)
   return json({ details })
 })

@@ -80,14 +80,13 @@ function QuickLog({ session, onSaved }) {
   )
 }
 
-function SessionBlock({ session, discipline, color, evaluations, onUpdated, today, quick = true, showDate = false }) {
+function SessionBlock({ session, discipline, color, evaluations, onUpdated, today, quick = true, showDate = false, manualZones = {} }) {
   const t = useT()
   const [details, setDetails] = useState(false)
   const pending = session.status === 'pendiente'
   const meta = [
     sessionKm(session) ? `${Math.round(sessionKm(session) * 10) / 10} km` : null,
     session.duration_planned_min ? t('today.plannedMin', { min: session.duration_planned_min }) : null,
-    session.rpe_theoretical ? `RPE ${session.rpe_theoretical}` : null,
   ].filter(Boolean)
 
   return (
@@ -105,6 +104,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
         </div>
         {session.description && <p className="text-sm text-ink/90 mt-2 whitespace-pre-line">{session.description}</p>}
         {meta.length > 0 && <p className="font-mono text-xs text-navy-light mt-2">{meta.join(' · ')}</p>}
+        {session.hr_zone_target && <p className="mt-2 inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">{session.hr_zone_target}{manualZones[session.hr_zone_target] ? ` · ${manualZones[session.hr_zone_target].lo}–${manualZones[session.hr_zone_target].hi} bpm` : ''}</p>}
         {session.intervals_activity_id && <div className="mt-3 rounded-lg bg-brand/15 border border-brand/40 p-3">
           <p className="font-mono text-[11px] uppercase font-semibold text-navy">{t('intervals.synced')}</p>
           <p className="mt-1 text-sm text-ink">
@@ -129,7 +129,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
       </div>
       {details && (
         <div className="border-t border-mist">
-          <SessionCard session={session} discipline={discipline} evaluations={evaluations} onUpdated={onUpdated} />
+          <SessionCard session={session} discipline={discipline} evaluations={evaluations} onUpdated={onUpdated} manualZones={manualZones} />
         </div>
       )}
     </article>
@@ -137,7 +137,7 @@ function SessionBlock({ session, discipline, color, evaluations, onUpdated, toda
 }
 
 // Pantalla «Hoy»: lo que el atleta necesita al abrir la app, en una sola columna.
-export default function TodayView({ today, profile, plan, race, sessions, intervalsActivities = [], disciplines, evaluationsBySession, unread, onUpdated, onNavigate }) {
+export default function TodayView({ today, profile, plan, race, sessions, intervalsActivities = [], disciplines, evaluationsBySession, unread, onUpdated, onNavigate, manualZones = {} }) {
   const t = useT()
 
   const data = useMemo(() => {
@@ -181,6 +181,7 @@ export default function TodayView({ today, profile, plan, race, sessions, interv
         evaluations={evaluationsBySession[s.id] || []}
         onUpdated={onUpdated}
         today={today}
+        manualZones={manualZones}
         {...extra}
       />
     )

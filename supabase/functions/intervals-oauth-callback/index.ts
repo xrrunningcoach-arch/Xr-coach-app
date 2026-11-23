@@ -65,6 +65,7 @@ Deno.serve(async (request) => {
       intervals_athlete_id: String(token.athlete.id),
       access_token: token.access_token,
       granted_scopes: token.scope || '',
+      last_wellness_sync_at: null,
       updated_at: savedAt,
     }),
     admin.from('intervals_connection_status').upsert({

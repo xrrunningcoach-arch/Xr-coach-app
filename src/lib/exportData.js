@@ -12,7 +12,7 @@ async function rows(query) {
 export async function collectAthleteData(userId) {
   const byAthlete = (table, col = 'athlete_id') => rows(supabase.from(table).select('*').eq(col, userId))
 
-  const [profile, athleteProfile, anamnesis, manualZones, messages, plans, thresholdTests, hrv, intervalsActivities, intervalsActivityDetails] = await Promise.all([
+  const [profile, athleteProfile, anamnesis, manualZones, messages, plans, thresholdTests, hrv, intervalsActivities, intervalsActivityDetails, intervalsWellness] = await Promise.all([
     byAthlete('profiles', 'id'),
     byAthlete('athlete_profiles', 'profile_id'),
     byAthlete('anamnesis'),
@@ -23,6 +23,7 @@ export async function collectAthleteData(userId) {
     byAthlete('hrv_readings'),
     byAthlete('intervals_activities', 'profile_id'),
     byAthlete('intervals_activity_details', 'profile_id'),
+    byAthlete('intervals_wellness', 'profile_id'),
   ])
 
   const planIds = plans.map((p) => p.id)
@@ -46,6 +47,7 @@ export async function collectAthleteData(userId) {
     hrv_readings: hrv,
     intervals_activities: intervalsActivities,
     intervals_activity_details: intervalsActivityDetails,
+    intervals_wellness: intervalsWellness,
     training_plans: plans,
     macrocycles,
     mesocycles,

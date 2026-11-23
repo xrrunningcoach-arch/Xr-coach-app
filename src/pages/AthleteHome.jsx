@@ -4,24 +4,24 @@ import { useAuth } from '../auth/AuthProvider'
 import { useT } from '../i18n'
 import AthleteDashboard from './AthleteDashboard'
 import AnamnesisForm from '../components/AnamnesisForm'
-import CoachChooser from '../components/CoachChooser'
-import DataExport from '../components/DataExport'
 import ConnectionsView from '../components/ConnectionsView'
 import ChatPanel from '../components/ChatPanel'
 import Sidebar from '../components/Sidebar'
 import QuedadasView from '../components/quedadas/QuedadasView'
-import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget, IconUser } from '../components/icons'
+import IntervalsWellnessPanel from '../components/IntervalsWellnessPanel'
+import { IconCalendar, IconChat, IconFlag, IconHome, IconUser } from '../components/icons'
 import { IconMapPin } from '../components/icons-social'
 
-const PLAN_SECTIONS = ['hoy', 'calendario', 'estadisticas', 'objetivos', 'zonas', 'tests']
+const PROFILE_SECTIONS = ['estadisticas', 'objetivos', 'zonas', 'tests']
 
 export default function AthleteHome() {
   const { user, profile } = useAuth()
   const t = useT()
   const [section, setSection] = useState('hoy')
+  const [profileSection, setProfileSection] = useState('estadisticas')
   const [unread, setUnread] = useState(0)
   const [meetupDraftSession, setMeetupDraftSession] = useState(null)
-  const isPlanSection = PLAN_SECTIONS.includes(section)
+  const isPlanSection = ['hoy', 'calendario'].includes(section) || (section === 'perfil' && PROFILE_SECTIONS.includes(profileSection))
 
   // Mensajes del entrenador sin leer (insignia en «Chat» y aviso en «Hoy»).
   const loadUnread = useCallback(async () => {
@@ -52,10 +52,6 @@ export default function AthleteHome() {
         { id: 'hoy', label: t('nav.today'), icon: IconHome, primary: true },
         { id: 'calendario', label: t('nav.calendar'), icon: IconCalendar, primary: true },
         { id: 'quedadas', label: t('nav.meetups'), icon: IconMapPin, primary: true },
-        { id: 'estadisticas', label: t('nav.stats'), icon: IconChart },
-        { id: 'objetivos', label: t('nav.goals'), icon: IconTarget },
-        { id: 'zonas', label: t('nav.zones'), icon: IconHeart },
-        { id: 'tests', label: t('nav.tests'), icon: IconFlag },
       ],
     },
     {
@@ -77,7 +73,7 @@ export default function AthleteHome() {
             recargan los datos ni se pierde el mes que estabas mirando. */}
         <div className={isPlanSection ? '' : 'hidden'}>
           <AthleteDashboard
-            section={isPlanSection ? section : 'hoy'}
+            section={section === 'perfil' ? profileSection : section}
             onNavigate={setSection}
             unread={unread}
             onProposeSession={(session) => { setMeetupDraftSession(session); setSection('quedadas') }}
@@ -88,15 +84,16 @@ export default function AthleteHome() {
 
         {section === 'conexiones' && <ConnectionsView onNavigate={setSection} userId={user.id} />}
 
-        {section === 'perfil' && (
-          <div className="bg-surface border border-mist rounded-xl p-6 space-y-4">
-            <div>
-              <h2 className="font-display text-xl text-navy">{t('nav.profile')}</h2>
-              <p className="text-sm text-slate mt-1">{t('profile.autoNote')}</p>
-            </div>
-            <AnamnesisForm athleteId={user.id} basicProfile={profile} />
-          </div>
-        )}
+        {section === 'perfil' && <div className="space-y-5">
+          <header className="flex flex-col gap-3 rounded-2xl bg-navy-deep p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div><p className="font-mono text-[11px] uppercase tracking-widest text-brand">XR · {t('nav.account')}</p><h1 className="mt-1 font-display text-2xl">{t('nav.profile')}</h1></div>
+            <label className="flex items-center gap-2 text-sm"><span className="sr-only">{t('profile.section')}</span><select value={profileSection} onChange={(e) => setProfileSection(e.target.value)} className="min-h-11 rounded-lg border border-white/20 bg-white px-3 py-2 font-semibold text-navy">
+              <option value="estadisticas">{t('nav.stats')}</option><option value="objetivos">{t('nav.goals')}</option><option value="zonas">{t('nav.zones')}</option><option value="tests">{t('nav.tests')}</option><option value="anamnesis">{t('sum.anamnesis')}</option><option value="bienestar">{t('wellness.title')}</option>
+            </select></label>
+          </header>
+          {profileSection === 'anamnesis' && <div className="rounded-xl border border-mist bg-surface p-5 sm:p-6"><p className="mb-4 text-sm text-slate">{t('profile.autoNote')}</p><AnamnesisForm athleteId={user.id} basicProfile={profile} /></div>}
+          {profileSection === 'bienestar' && <IntervalsWellnessPanel athleteId={user.id} />}
+        </div>}
 
         {section === 'chat' && <ChatPanel athleteId={user.id} otherName={t('chat.theCoach')} />}
       </div>

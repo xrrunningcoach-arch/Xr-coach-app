@@ -57,6 +57,7 @@ export default function AthleteCalendar({
   disciplines,
   evaluationsBySession,
   milestones,
+  manualZones = {},
   onUpdated,
   onProposeSession,
 }) {
@@ -155,6 +156,7 @@ export default function AthleteCalendar({
               discipline={findDiscipline(disciplines, s.discipline_id)}
               evaluations={evaluationsBySession[s.id] || []}
               onUpdated={onUpdated}
+              manualZones={manualZones}
             />
             {onProposeSession && s.session_date >= today && s.status === 'pendiente' && <div className="border-t border-mist bg-bg-dim px-4 py-2">
               <button type="button" onClick={() => onProposeSession(s)} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold text-navy transition hover:bg-brand/20">

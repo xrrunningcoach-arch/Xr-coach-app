@@ -12,17 +12,18 @@ import DisciplineFields from './DisciplineFields'
 import StrengthExercises from './StrengthExercises'
 import { ui } from '../ui/ui'
 import { useT } from '../i18n'
+import IntervalsActivityAnalysis from './IntervalsActivityAnalysis'
 
 // Fila de edición de una sesión (vista del entrenador). Movida desde
 // CoachAthlete.jsx para poder usarla también desde el calendario; añade el
 // campo «Fecha» (la que coloca la tarjeta en el calendario del atleta) y el
 // botón «Guardar en biblioteca».
-export default function CoachSessionRow({ session, disciplines, mesocycles = [], planStart = null, onChanged, onSaveToLibrary }) {
+export default function CoachSessionRow({ session, athleteId, disciplines, mesocycles = [], planStart = null, onChanged, onSaveToLibrary, manualZones = {} }) {
   const t = useT()
   const [type, setType] = useState(session.session_type || '')
   const [description, setDescription] = useState(session.description || '')
   const [km, setKm] = useState(session.km_estimated ?? '')
-  const [rpeTheo, setRpeTheo] = useState(session.rpe_theoretical || '')
+  const [hrZoneTarget, setHrZoneTarget] = useState(session.hr_zone_target || '')
   const [disciplineId, setDisciplineId] = useState(session.discipline_id || '')
   const [durationPlanned, setDurationPlanned] = useState(session.duration_planned_min ?? '')
   const [metrics, setMetrics] = useState(session.metrics || {})
@@ -52,7 +53,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
         session_type: type,
         description,
         km_estimated: km === '' ? null : Number(km),
-        rpe_theoretical: rpeTheo,
+        hr_zone_target: hrZoneTarget || null,
         discipline_id: disciplineId || null,
         duration_planned_min: durationPlanned === '' ? null : Number(durationPlanned),
         metrics,
@@ -167,14 +168,14 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           />
         </div>
 
-        <div className="sm:col-span-1">
-          <input
-            value={rpeTheo}
-            onChange={(e) => setRpeTheo(e.target.value)}
-            placeholder="RPE"
-            className="w-full border border-mist rounded-sm px-2 py-2 text-sm"
-          />
-        </div>
+        {discipline?.code === 'running' && <div className="sm:col-span-2">
+          <label className="mb-1 block font-mono text-[10px] uppercase text-slate">{t('zones.title')}</label>
+          <select value={hrZoneTarget} onChange={(e) => setHrZoneTarget(e.target.value)} className="w-full border border-mist rounded-sm bg-surface px-2 py-2 text-sm">
+            <option value="">{t('coach.noHrTarget')}</option>
+            {!Object.keys(manualZones).length && <option value="" disabled>{t('coach.defineZonesFirst')}</option>}
+            {['Z1','Z2','Z3','Z4','Z5'].filter((zone) => manualZones[zone] || zone === hrZoneTarget).map((zone) => <option key={zone} value={zone}>{zone}{manualZones[zone] ? ` · ${manualZones[zone].lo}–${manualZones[zone].hi} bpm` : ` · ${t('zones.missing')}`}</option>)}
+          </select>
+        </div>}
 
         <div className="sm:col-span-2 flex flex-col items-end gap-1.5">
           <button
@@ -198,7 +199,7 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
       <div className="mt-2 flex flex-wrap items-center gap-3 pl-0 sm:pl-[calc(8.3%)]">
         <StatusBadge status={session.status} />
         <CoachStatusControl session={session} onChanged={onChanged} />
-        {session.rpe_actual && <span className="text-xs font-mono text-slate">{t('coach.rpeReal', { v: session.rpe_actual })}</span>}
+        {session.hr_zone_target && <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">{session.hr_zone_target}{manualZones[session.hr_zone_target] ? ` · ${manualZones[session.hr_zone_target].lo}–${manualZones[session.hr_zone_target].hi} bpm` : ''}</span>}
         {toSafeHref(session.link_url) && (
           <a href={toSafeHref(session.link_url)} target="_blank" rel="noreferrer" className="text-xs text-navy underline underline-offset-2">
             {t('csr.viewTraining')}
@@ -209,6 +210,16 @@ export default function CoachSessionRow({ session, disciplines, mesocycles = [],
           {showEval ? t('csr.hideEval') : t('csr.eval')}
         </button>
       </div>
+
+      {session.intervals_activity_id && <div className="mt-3 rounded-lg border border-brand/50 bg-brand/10 p-3 sm:ml-[8.3%]">
+        <p className="font-mono text-[11px] font-semibold uppercase text-navy">{t('intervals.synced')}</p>
+        <p className="mt-1 text-sm text-ink">{[
+          session.distance_actual_km != null ? `${Number(session.distance_actual_km).toFixed(2)} km` : null,
+          session.duration_actual_min != null ? `${Math.round(session.duration_actual_min)} min` : null,
+          session.avg_hr_actual != null ? `${session.avg_hr_actual} bpm` : null,
+        ].filter(Boolean).join(' · ') || t('intervals.run')}</p>
+        <IntervalsActivityAnalysis activityId={session.intervals_activity_id} athleteId={athleteId} />
+      </div>}
 
       {showEval && <EvaluationBox sessionId={session.id} evaluations={evaluations} onAdded={loadEvaluations} />}
     </div>

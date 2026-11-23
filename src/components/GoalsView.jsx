@@ -1,5 +1,9 @@
 import { diffDays, longDayTitle } from '../lib/dates'
 import { tr, useT } from '../i18n'
+import { useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { ui } from '../ui/ui'
+import AthleteProfileForm from '../pages/AthleteProfileForm'
 
 function Card({ title, children }) {
   return (
@@ -20,10 +24,13 @@ function countdown(dateISO, today) {
 }
 
 // Sección «Objetivos»: las metas del atleta. Reúne la prueba objetivo del
-// plan, los objetivos de su perfil y los hitos que fija el entrenador (lo que
+// plan, los objetivos de su perfil y los hitos que registra el atleta (lo que
 // antes era la pestaña «Calendario»).
-export default function GoalsView({ plan, race, milestones, athleteProfile, today, onGoToProfile }) {
+export default function GoalsView({ plan, race, milestones, athleteProfile, profileId, basicProfile, today, onGoToProfile, onChanged }) {
   const t = useT()
+  const [form, setForm] = useState({ event_date: '', title: '', type: 'goal', week_ref: '', notes: '' })
+  const [saving, setSaving] = useState(false)
+  const [editingGoals, setEditingGoals] = useState(false)
   const raceName = race?.name || plan?.custom_race_name
   const goals = [
     [t('goals.main'), athleteProfile?.main_goal],
@@ -63,6 +70,8 @@ export default function GoalsView({ plan, race, milestones, athleteProfile, toda
       )}
 
       <Card title={t('goals.myGoals')}>
+        {editingGoals && <AthleteProfileForm profileId={profileId} basicProfile={basicProfile} onSaved={() => { setEditingGoals(false); onChanged?.() }} />}
+        {!editingGoals && <button type="button" onClick={() => setEditingGoals(true)} className="mb-4 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-navy">{t('goals.editGoals')}</button>}
         {goals.length > 0 ? (
           <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
             {goals.map(([label, value]) => (
@@ -105,11 +114,30 @@ export default function GoalsView({ plan, race, milestones, athleteProfile, toda
                       </span>
                     )}
                   </div>
+                  <button type="button" onClick={async () => {
+                    const { error } = await supabase.from('milestones').delete().eq('id', m.id)
+                    if (error) ui.error(error.message)
+                    else onChanged?.()
+                  }} className="shrink-0 text-xs font-semibold text-red">{t('c.delete')}</button>
                 </div>
               )
             })}
           </div>
         )}
+        {plan && <form onSubmit={async (event) => {
+          event.preventDefault()
+          setSaving(true)
+          const { error } = await supabase.from('milestones').insert({ ...form, plan_id: plan.id })
+          setSaving(false)
+          if (error) { ui.error(error.message); return }
+          setForm({ event_date: '', title: '', type: 'goal', week_ref: '', notes: '' })
+          onChanged?.()
+        }} className="mt-5 grid gap-3 border-t border-mist pt-5 sm:grid-cols-2">
+          <input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+          <input required maxLength={120} placeholder={t('goals.milestoneTitle')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="min-h-11 rounded-md border border-mist px-3 py-2" />
+          <textarea maxLength={1000} placeholder={t('tests.col.notes')} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="rounded-md border border-mist px-3 py-2 sm:col-span-2" />
+          <button disabled={saving} className="min-h-11 justify-self-start rounded-lg bg-brand px-4 py-2 text-sm font-bold text-navy disabled:opacity-60">{saving ? t('common.saving') : t('goals.addMilestone')}</button>
+        </form>}
       </Card>
     </div>
   )

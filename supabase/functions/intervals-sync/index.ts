@@ -38,33 +38,32 @@ Deno.serve(async (request) => {
   if (profile?.role !== 'athlete' || profile.is_active === false) return json({ error: 'Athlete account required' }, 403)
 
   const { data: connection, error: connectionError } = await admin.from('intervals_connections')
-    .select('access_token,last_activity_sync_at').eq('profile_id', user.id).maybeSingle()
+    .select('access_token,last_activity_sync_at,last_wellness_sync_at').eq('profile_id', user.id).maybeSingle()
   if (connectionError) return json({ error: 'Could not read Intervals connection' }, 500)
   if (!connection?.access_token) return json({ connected: false, synced: 0 })
-  if (connection.last_activity_sync_at && Date.now() - new Date(connection.last_activity_sync_at).getTime() < 60 * 60 * 1000) {
-    return json({ connected: true, skipped: true, synced: 0 })
-  }
+  const syncActivities = !connection.last_activity_sync_at || Date.now() - new Date(connection.last_activity_sync_at).getTime() >= 60 * 60 * 1000
+  const syncWellness = !connection.last_wellness_sync_at || Date.now() - new Date(connection.last_wellness_sync_at).getTime() >= 12 * 60 * 60 * 1000
+  if (!syncActivities && !syncWellness) return json({ connected: true, skipped: true, synced: 0, wellness_synced: 0 })
 
   const newest = new Date().toISOString().slice(0, 10)
   const oldest = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const url = new URL('https://intervals.icu/api/v1/athlete/0/activities')
-  url.searchParams.set('oldest', oldest)
-  url.searchParams.set('newest', newest)
-  let response: Response
-  try {
-    response = await fetch(url, { headers: { Authorization: `Bearer ${connection.access_token}` } })
-  } catch {
-    return json({ error: 'Intervals.icu is temporarily unavailable' }, 502)
-  }
-  if (!response.ok) {
-    console.error('Intervals sync returned', response.status)
-    return json({ error: 'Intervals.icu rejected the activity sync', status: response.status }, 502)
-  }
-
-  const activities = await response.json().catch(() => null)
-  if (!Array.isArray(activities)) return json({ error: 'Invalid activity response from Intervals.icu' }, 502)
   const now = new Date().toISOString()
-  const runs = activities.filter((a) => a?.id && /run|trail/i.test(String(a.type || a.sport || '')))
+  let runs: any[] = []
+  if (syncActivities) {
+    const url = new URL('https://intervals.icu/api/v1/athlete/0/activities')
+    url.searchParams.set('oldest', oldest)
+    url.searchParams.set('newest', newest)
+    let response: Response
+    try { response = await fetch(url, { headers: { Authorization: `Bearer ${connection.access_token}` } }) }
+    catch { return json({ error: 'Intervals.icu is temporarily unavailable' }, 502) }
+    if (!response.ok) {
+      console.error('Intervals activity sync returned', response.status)
+      return json({ error: 'Intervals.icu rejected the activity sync', status: response.status }, 502)
+    }
+    const activities = await response.json().catch(() => null)
+    if (!Array.isArray(activities)) return json({ error: 'Invalid activity response from Intervals.icu' }, 502)
+    runs = activities.filter((a) => a?.id && /run|trail/i.test(String(a.type || a.sport || '')))
+  }
   if (runs.length) {
     const { error } = await admin.from('intervals_activities').upsert(runs.map((a) => ({
       profile_id: user.id,
@@ -96,8 +95,47 @@ Deno.serve(async (request) => {
     }
   }
 
-  const { error: timestampError } = await admin.from('intervals_connections')
-    .update({ last_activity_sync_at: now }).eq('profile_id', user.id)
-  if (timestampError) return json({ error: 'Activities synced, but sync time could not be saved' }, 500)
-  return json({ connected: true, synced: runs.length })
+  const syncTimes: Record<string, string> = {}
+  if (syncActivities) syncTimes.last_activity_sync_at = now
+  let wellnessSynced = 0
+  if (syncWellness) {
+    const wellnessUrl = new URL('https://intervals.icu/api/v1/athlete/0/wellness')
+    wellnessUrl.searchParams.set('oldest', new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10))
+    wellnessUrl.searchParams.set('newest', newest)
+    try {
+      const wellnessResponse = await fetch(wellnessUrl, { headers: { Authorization: `Bearer ${connection.access_token}` } })
+      if (wellnessResponse.ok) {
+        const wellness = await wellnessResponse.json().catch(() => null)
+        if (Array.isArray(wellness)) {
+          const rows = wellness.map((w) => {
+            const date = String(w?.id || w?.date || w?.day || '').slice(0, 10)
+            return {
+              profile_id: user.id, wellness_date: date,
+              hrv_rmssd: w?.hrv ?? w?.hrvRmssd ?? null, hrv_sdnn: w?.hrvSDNN ?? w?.hrv_sdnn ?? null,
+              resting_hr: w?.restingHR ?? w?.resting_hr ?? null,
+              average_sleeping_hr: w?.avgSleepingHR ?? w?.average_sleeping_hr ?? null,
+              weight_kg: w?.weight ?? w?.weight_kg ?? null,
+              sleep_seconds: w?.sleepSecs ?? w?.sleep_seconds ?? null,
+              sleep_score: w?.sleepScore ?? w?.sleep_score ?? null,
+              spo2: w?.spO2 ?? w?.spo2 ?? null, readiness: w?.readiness ?? null,
+              stress: w?.stress ?? null, fatigue: w?.fatigue ?? null,
+              soreness: w?.soreness ?? null, mood: w?.mood ?? null,
+              motivation: w?.motivation ?? null, raw_wellness: w, received_at: now,
+            }
+          }).filter((w) => /^\d{4}-\d{2}-\d{2}$/.test(w.wellness_date))
+          if (rows.length) {
+            const { error } = await admin.from('intervals_wellness').upsert(rows, { onConflict: 'profile_id,wellness_date' })
+            if (error) { console.error('Could not save wellness', error.message); return json({ error: 'Could not save imported wellness data' }, 500) }
+            wellnessSynced = rows.length
+          }
+        }
+      } else if (wellnessResponse.status !== 403) {
+        console.error('Intervals wellness sync returned', wellnessResponse.status)
+      }
+    } catch (error) { console.error('Intervals wellness sync failed', error instanceof Error ? error.message : 'unknown error') }
+    syncTimes.last_wellness_sync_at = now
+  }
+  const { error: timestampError } = await admin.from('intervals_connections').update(syncTimes).eq('profile_id', user.id)
+  if (timestampError) return json({ error: 'Data synced, but sync time could not be saved' }, 500)
+  return json({ connected: true, synced: runs.length, wellness_synced: wellnessSynced })
 })

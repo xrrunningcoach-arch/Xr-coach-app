@@ -123,7 +123,7 @@ function ActivityChart({ title, values, color, unit, pace = false }) {
   </section>
 }
 
-export default function IntervalsActivityAnalysis({ activityId }) {
+export default function IntervalsActivityAnalysis({ activityId, athleteId = null }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -138,7 +138,7 @@ export default function IntervalsActivityAnalysis({ activityId }) {
     setLoading(true)
     setError('')
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('intervals-activity-detail', { body: { activity_id: activityId } })
+      const { data, error: invokeError } = await supabase.functions.invoke('intervals-activity-detail', { body: { activity_id: activityId, ...(athleteId ? { athlete_id: athleteId } : {}) } })
       if (invokeError) throw invokeError
       if (!data?.details) throw new Error(t('intervals.detailUnavailable'))
       setDetails(data.details)

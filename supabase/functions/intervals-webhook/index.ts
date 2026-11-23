@@ -38,7 +38,48 @@ Deno.serve(async (request) => {
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   let stored = 0
+  let wellnessStored = 0
   for (const event of payload.events) {
+    if (event?.type === 'WELLNESS_UPDATED' && event.athlete_id) {
+      const { data: connection } = await admin.from('intervals_connections')
+        .select('profile_id,access_token').eq('intervals_athlete_id', String(event.athlete_id)).maybeSingle()
+      if (!connection) continue
+      const newest = new Date().toISOString().slice(0, 10)
+      const oldest = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10)
+      const wellnessUrl = new URL('https://intervals.icu/api/v1/athlete/0/wellness')
+      wellnessUrl.searchParams.set('oldest', oldest)
+      wellnessUrl.searchParams.set('newest', newest)
+      try {
+        const response = await fetch(wellnessUrl, { headers: { Authorization: `Bearer ${connection.access_token}` } })
+        if (!response.ok) { console.error('Intervals wellness webhook sync returned', response.status); continue }
+        const wellness = await response.json().catch(() => null)
+        if (!Array.isArray(wellness)) continue
+        const receivedAt = new Date().toISOString()
+        const rows = wellness.map((w) => {
+          const date = String(w?.id || w?.date || w?.day || '').slice(0, 10)
+          return {
+            profile_id: connection.profile_id, wellness_date: date,
+            hrv_rmssd: w?.hrv ?? w?.hrvRmssd ?? null, hrv_sdnn: w?.hrvSDNN ?? w?.hrv_sdnn ?? null,
+            resting_hr: w?.restingHR ?? w?.resting_hr ?? null,
+            average_sleeping_hr: w?.avgSleepingHR ?? w?.average_sleeping_hr ?? null,
+            weight_kg: w?.weight ?? w?.weight_kg ?? null,
+            sleep_seconds: w?.sleepSecs ?? w?.sleep_seconds ?? null,
+            sleep_score: w?.sleepScore ?? w?.sleep_score ?? null,
+            spo2: w?.spO2 ?? w?.spo2 ?? null, readiness: w?.readiness ?? null,
+            stress: w?.stress ?? null, fatigue: w?.fatigue ?? null,
+            soreness: w?.soreness ?? null, mood: w?.mood ?? null,
+            motivation: w?.motivation ?? null, raw_wellness: w, received_at: receivedAt,
+          }
+        }).filter((w) => /^\d{4}-\d{2}-\d{2}$/.test(w.wellness_date))
+        if (rows.length) {
+          const { error } = await admin.from('intervals_wellness').upsert(rows, { onConflict: 'profile_id,wellness_date' })
+          if (error) { console.error('Could not store Intervals wellness', error.message); continue }
+          wellnessStored += rows.length
+          await admin.from('intervals_connections').update({ last_wellness_sync_at: receivedAt }).eq('profile_id', connection.profile_id)
+        }
+      } catch (error) { console.error('Intervals wellness webhook failed', error instanceof Error ? error.message : 'unknown error') }
+      continue
+    }
     if (!['ACTIVITY_UPLOADED', 'ACTIVITY_ANALYZED', 'ACTIVITY_UPDATED'].includes(event?.type) || !event.activity?.id || !event.athlete_id) continue
     const { data: connection } = await admin.from('intervals_connections')
       .select('profile_id,access_token').eq('intervals_athlete_id', String(event.athlete_id)).maybeSingle()
@@ -75,5 +116,5 @@ Deno.serve(async (request) => {
       console.error('Could not fetch Intervals activity streams', detailError instanceof Error ? detailError.message : 'unknown error')
     }
   }
-  return Response.json({ ok: true, stored })
+  return Response.json({ ok: true, stored, wellness_stored: wellnessStored })
 })
