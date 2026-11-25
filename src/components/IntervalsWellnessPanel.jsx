@@ -8,7 +8,7 @@ function value(row, field, suffix = '') {
   return `${Number.isInteger(Number(v)) ? Number(v) : Number(v).toFixed(1)}${suffix}`
 }
 
-export default function IntervalsWellnessPanel({ athleteId, readOnly = false }) {
+export default function IntervalsWellnessPanel({ athleteId, readOnly = false, syncAthleteId = null }) {
   const t = useT()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,7 +20,8 @@ export default function IntervalsWellnessPanel({ athleteId, readOnly = false }) 
       setError('')
       setSyncMessage('')
       if (!readOnly) {
-        const { data: syncData, error: syncError } = await supabase.functions.invoke('intervals-sync', { body: force ? { force_wellness: true } : {} })
+        const requestBody = { ...(force ? { force_wellness: true } : {}), ...(syncAthleteId ? { athlete_id: syncAthleteId } : {}) }
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('intervals-sync', { body: requestBody })
         if (syncError) {
           console.warn('Intervals wellness refresh failed:', syncError.message)
           setSyncMessage(syncError.message)

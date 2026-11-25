@@ -34,13 +34,21 @@ Deno.serve(async (request) => {
   if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
-  const { data: profile } = await admin.from('profiles').select('role,is_active').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'athlete' || profile.is_active === false) return json({ error: 'Athlete account required' }, 403)
-
   const requestBody = await request.json().catch(() => ({}))
   const forceWellness = requestBody?.force_wellness === true
+  const { data: profile } = await admin.from('profiles').select('role,is_active,coach_approved').eq('id', user.id).maybeSingle()
+  if (!profile || profile.is_active === false) return json({ error: 'Active account required' }, 403)
+  let ownerId = user.id
+  if (profile.role === 'coach') {
+    if (profile.coach_approved !== true) return json({ error: 'Approved coach account required' }, 403)
+    if (typeof requestBody?.athlete_id !== 'string') return json({ error: 'Athlete id required for coach sync' }, 400)
+    const { data: athlete } = await admin.from('profiles').select('id,role,coach_id,is_active').eq('id', requestBody.athlete_id).maybeSingle()
+    if (!athlete || athlete.role !== 'athlete' || athlete.coach_id !== user.id || athlete.is_active === false) return json({ error: 'This athlete is not assigned to this coach' }, 403)
+    ownerId = athlete.id
+  } else if (profile.role !== 'athlete') return json({ error: 'Athlete or assigned coach account required' }, 403)
+
   const { data: connection, error: connectionError } = await admin.from('intervals_connections')
-    .select('access_token,last_activity_sync_at,last_wellness_sync_at').eq('profile_id', user.id).maybeSingle()
+    .select('access_token,last_activity_sync_at,last_wellness_sync_at').eq('profile_id', ownerId).maybeSingle()
   if (connectionError) return json({ error: 'Could not read Intervals connection' }, 500)
   if (!connection?.access_token) return json({ connected: false, synced: 0 })
   const syncActivities = !connection.last_activity_sync_at || Date.now() - new Date(connection.last_activity_sync_at).getTime() >= 60 * 60 * 1000
@@ -68,7 +76,7 @@ Deno.serve(async (request) => {
   }
   if (runs.length) {
     const { error } = await admin.from('intervals_activities').upsert(runs.map((a) => ({
-      profile_id: user.id,
+      profile_id: ownerId,
       provider_activity_id: String(a.id),
       activity_type: a.type || a.sport || null,
       activity_name: a.name || null,
@@ -90,7 +98,7 @@ Deno.serve(async (request) => {
     // stream data is already stored. Process serially to stay gentle with API limits.
     for (const activity of runs) {
       try {
-        await fetchAndStoreIntervalsDetails(admin, user.id, connection.access_token, String(activity.id))
+        await fetchAndStoreIntervalsDetails(admin, ownerId, connection.access_token, String(activity.id))
       } catch (detailError) {
         console.error('Could not fetch Intervals activity detail', detailError instanceof Error ? detailError.message : 'unknown error')
       }
@@ -113,7 +121,7 @@ Deno.serve(async (request) => {
           const rows = wellness.map((w) => {
             const date = String(w?.id || w?.date || w?.day || '').slice(0, 10)
             return {
-              profile_id: user.id, wellness_date: date,
+              profile_id: ownerId, wellness_date: date,
               hrv_rmssd: w?.hrv ?? w?.hrvRmssd ?? null, hrv_sdnn: w?.hrvSDNN ?? w?.hrv_sdnn ?? null,
               resting_hr: w?.restingHR ?? w?.resting_hr ?? null,
               average_sleeping_hr: w?.avgSleepingHR ?? w?.average_sleeping_hr ?? null,
@@ -145,7 +153,7 @@ Deno.serve(async (request) => {
     if (!wellnessError) syncTimes.last_wellness_sync_at = now
   }
   if (Object.keys(syncTimes).length) {
-    const { error: timestampError } = await admin.from('intervals_connections').update(syncTimes).eq('profile_id', user.id)
+    const { error: timestampError } = await admin.from('intervals_connections').update(syncTimes).eq('profile_id', ownerId)
     if (timestampError) return json({ error: 'Data synced, but sync time could not be saved' }, 500)
   }
   return json({ connected: true, synced: runs.length, wellness_synced: wellnessSynced, wellness_error: wellnessError })

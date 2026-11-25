@@ -285,7 +285,7 @@ export default function CoachAthlete() {
           <IntervalsActivityAnalysis activityId={activity.provider_activity_id} athleteId={athleteId} />
         </article>)}
       </section>}
-      {tab === 'bienestar' && <IntervalsWellnessPanel athleteId={athleteId} readOnly />}
+      {tab === 'bienestar' && <IntervalsWellnessPanel athleteId={athleteId} syncAthleteId={athleteId} />}
       {tab === 'chat' && <ChatPanel athleteId={athlete.id} otherName={athlete.full_name || athlete.email} />}
 
       {tab === 'zonas' && !plan && (
