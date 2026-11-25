@@ -139,7 +139,15 @@ export default function IntervalsActivityAnalysis({ activityId, athleteId = null
     setError('')
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('intervals-activity-detail', { body: { activity_id: activityId, ...(athleteId ? { athlete_id: athleteId } : {}) } })
-      if (invokeError) throw invokeError
+      if (invokeError) {
+        let detailMessage = ''
+        try {
+          const payload = await invokeError.context?.json?.()
+          detailMessage = payload?.error || payload?.message || ''
+        } catch { /* fallback to SDK status/message */ }
+        const status = invokeError.context?.status
+        throw new Error(detailMessage || `${t('intervals.detailUnavailable')}${status ? ` (${status})` : ''}: ${invokeError.message || ''}`.trim())
+      }
       if (!data?.details) throw new Error(t('intervals.detailUnavailable'))
       setDetails(data.details)
     } catch (cause) {

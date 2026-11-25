@@ -47,10 +47,12 @@ Deno.serve(async (request) => {
   ])
   if (!activity || !connection?.access_token) return json({ error: 'Activity or connection not found' }, 404)
   try {
-    await fetchAndStoreIntervalsDetails(admin, ownerId, connection.access_token, activityId)
+    const fetchResult = await fetchAndStoreIntervalsDetails(admin, ownerId, connection.access_token, activityId, true)
+    if (fetchResult.status === 403) return json({ error: 'Intervals.icu denied access to this activity trace (403). Reconnect and grant ACTIVITY:READ; also verify the activity exposes heart-rate data.' }, 403)
+    if (fetchResult.status === 404) return json({ error: 'Intervals.icu has no detailed trace for this activity (404).' }, 404)
   } catch (error) {
     console.error('Activity detail request failed', error instanceof Error ? error.message : 'unknown error')
-    return json({ error: 'Could not load activity detail from Intervals.icu' }, 502)
+    return json({ error: error instanceof Error ? error.message : 'Could not load activity detail from Intervals.icu' }, 502)
   }
   const { data: details, error } = await admin.from('intervals_activity_details')
     .select('streams,intervals,has_streams,details_updated_at')

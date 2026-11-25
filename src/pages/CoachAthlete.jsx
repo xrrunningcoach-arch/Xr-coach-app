@@ -27,7 +27,7 @@ import IntervalsActivityAnalysis from '../components/IntervalsActivityAnalysis'
 import IntervalsWellnessPanel from '../components/IntervalsWellnessPanel'
 import { ui } from '../ui/ui'
 import { useT } from '../i18n'
-import { IconCalendar, IconChart, IconChat, IconFlag, IconHeart, IconHome, IconTarget } from '../components/icons'
+import { IconCalendar, IconChat, IconHeart, IconHome } from '../components/icons'
 
 export default function CoachAthlete() {
   const { athleteId } = useParams()
@@ -50,6 +50,7 @@ export default function CoachAthlete() {
   const [intervalsActivities, setIntervalsActivities] = useState([])
   const [disciplines, setDisciplines] = useState([])
   const [tab, setTab] = useState('resumen')
+  const [calendarView, setCalendarView] = useState('calendar')
   const [calendarFocus, setCalendarFocus] = useState(null) // { date, key }: lleva el calendario a esa semana
   const [libraryDraft, setLibraryDraft] = useState(null) // { kind, defaultName, payload }
 
@@ -161,9 +162,7 @@ export default function CoachAthlete() {
       <nav aria-label={t('nav.coachSections')} className="grid grid-cols-2 gap-2 sm:hidden">
         {[
           ['resumen', t('ed.tab.summary'), IconHome],
-          ['plan', t('ed.tab.plan'), IconFlag],
           ['calendario', t('nav.calendar'), IconCalendar],
-          ['actividades', t('coach.intervalsActivities'), IconChart],
           ['bienestar', t('wellness.title'), IconHeart],
           ['zonas', t('nav.zones'), IconHeart],
           ['chat', t('nav.chatShort'), IconChat],
@@ -186,9 +185,7 @@ export default function CoachAthlete() {
       <nav aria-label={t('nav.coachSections')} className="hidden gap-2 border-b border-mist sm:flex">
         {[
           ['resumen', t('ed.tab.summary')],
-          ['plan', t('ed.tab.plan')],
           ['calendario', t('nav.calendar')],
-          ['actividades', t('coach.intervalsActivities')],
           ['bienestar', t('wellness.title')],
           ['zonas', t('nav.zones')],
           ['chat', t('nav.chatShort')],
@@ -212,12 +209,19 @@ export default function CoachAthlete() {
           sessions={sessions}
           disciplines={disciplines}
           onReload={loadAll}
-          onGoToPlan={() => setTab('plan')}
+          onGoToPlan={() => { setCalendarView('plan'); setTab('calendario') }}
           onSaveToLibrary={saveToLibrary}
         />
       )}
 
-      {tab === 'plan' &&
+      {tab === 'calendario' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mist bg-surface px-4 py-3">
+        <div><h2 className="font-display text-lg text-navy">{t('nav.calendar')}</h2><p className="text-xs text-slate">{t('coach.calendarViewHelp')}</p></div>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate"><span>{t('coach.calendarView')}</span><select value={calendarView} onChange={(event) => setCalendarView(event.target.value)} className="min-h-11 rounded-lg border border-mist bg-white px-3 py-2 font-semibold text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">
+          <option value="calendar">{t('nav.calendar')}</option><option value="plan">{t('ed.tab.plan')}</option><option value="activities">{t('coach.intervalsActivities')}</option>
+        </select></label>
+      </div>}
+
+      {tab === 'calendario' && calendarView === 'plan' &&
         (plan ? (
           <PlanEditor
             plan={plan}
@@ -231,6 +235,7 @@ export default function CoachAthlete() {
             onSaveToLibrary={saveToLibrary}
             onShowInCalendar={(date) => {
               setCalendarFocus({ date, key: Date.now() })
+              setCalendarView('calendar')
               setTab('calendario')
             }}
           />
@@ -256,7 +261,7 @@ export default function CoachAthlete() {
           onSaved={() => loadAll(true)}
         />
       )}
-      {tab === 'calendario' && plan && (
+      {tab === 'calendario' && calendarView === 'calendar' && plan && (
         <CoachCalendar
           athlete={athlete}
           athleteId={athlete.id}
@@ -270,10 +275,10 @@ export default function CoachAthlete() {
           onSaveSessionToLibrary={(session) => saveToLibrary('session', session)}
           focusDate={calendarFocus?.date}
           focusKey={calendarFocus?.key}
-          onShowInPlan={() => setTab('plan')}
+          onShowInPlan={() => setCalendarView('plan')}
         />
       )}
-      {tab === 'actividades' && <section className="space-y-4">
+      {tab === 'calendario' && calendarView === 'activities' && <section className="space-y-4">
         <header><h2 className="font-display text-2xl text-navy">{t('coach.intervalsActivities')}</h2><p className="text-sm text-slate">{t('coach.intervalsActivitiesHelp')}</p></header>
         {intervalsActivities.length === 0 ? <p className="rounded-xl border border-mist bg-surface p-5 text-sm text-slate">{t('coach.noIntervalsActivities')}</p> : intervalsActivities.map((activity) => <article key={activity.provider_activity_id} className="rounded-xl border border-mist bg-surface p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-display text-lg text-navy">{activity.activity_name || activity.activity_type || t('intervals.run')}</h3><p className="text-xs text-slate">{activity.start_date_local ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(activity.start_date_local)) : ''}</p></div><p className="flex flex-wrap gap-3 font-mono text-xs text-slate">{activity.distance_m != null && <span>{(activity.distance_m / 1000).toFixed(2)} km</span>}{activity.moving_time_s != null && <span>{Math.floor(activity.moving_time_s / 60)} min</span>}{activity.average_hr != null && <span className="text-red-600">{activity.average_hr} bpm</span>}</p></div>
@@ -286,7 +291,7 @@ export default function CoachAthlete() {
       {tab === 'zonas' && !plan && (
         <p className="text-sm text-slate">{t('ed.needPlan')}</p>
       )}
-      {tab === 'calendario' && !plan && (
+      {tab === 'calendario' && calendarView === 'calendar' && !plan && (
         <div className="space-y-3">
           <p className="text-sm text-slate">
             {t('ed.noPlanCalendar')}
@@ -545,8 +550,8 @@ function PlanEditor({ plan, athleteId, mesocycles, sessions, disciplines, races,
       byWeek[s.week_number].push(s)
     })
     return Object.entries(byWeek)
-      .map(([week, items]) => ({ week: Number(week), items: sortByDate(items) }))
-      .sort((a, b) => a.week - b.week)
+      .map(([week, items]) => ({ week: Number(week), items: sortByDate(items).reverse() }))
+      .sort((a, b) => b.week - a.week)
   }, [sessions])
 
   // Carga real registrada por semana (session-RPE x duración), para ver de

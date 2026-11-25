@@ -37,13 +37,15 @@ Deno.serve(async (request) => {
   const { data: profile } = await admin.from('profiles').select('role,is_active').eq('id', user.id).maybeSingle()
   if (profile?.role !== 'athlete' || profile.is_active === false) return json({ error: 'Athlete account required' }, 403)
 
+  const requestBody = await request.json().catch(() => ({}))
+  const forceWellness = requestBody?.force_wellness === true
   const { data: connection, error: connectionError } = await admin.from('intervals_connections')
     .select('access_token,last_activity_sync_at,last_wellness_sync_at').eq('profile_id', user.id).maybeSingle()
   if (connectionError) return json({ error: 'Could not read Intervals connection' }, 500)
   if (!connection?.access_token) return json({ connected: false, synced: 0 })
   const syncActivities = !connection.last_activity_sync_at || Date.now() - new Date(connection.last_activity_sync_at).getTime() >= 60 * 60 * 1000
-  const syncWellness = !connection.last_wellness_sync_at || Date.now() - new Date(connection.last_wellness_sync_at).getTime() >= 12 * 60 * 60 * 1000
-  if (!syncActivities && !syncWellness) return json({ connected: true, skipped: true, synced: 0, wellness_synced: 0 })
+  const syncWellness = forceWellness || !connection.last_wellness_sync_at || Date.now() - new Date(connection.last_wellness_sync_at).getTime() >= 12 * 60 * 60 * 1000
+  if (!syncActivities && !syncWellness) return json({ connected: true, skipped: true, synced: 0, wellness_synced: 0, wellness_error: null })
 
   const newest = new Date().toISOString().slice(0, 10)
   const oldest = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -98,6 +100,7 @@ Deno.serve(async (request) => {
   const syncTimes: Record<string, string> = {}
   if (syncActivities) syncTimes.last_activity_sync_at = now
   let wellnessSynced = 0
+  let wellnessError: string | null = null
   if (syncWellness) {
     const wellnessUrl = new URL('https://intervals.icu/api/v1/athlete/0/wellness')
     wellnessUrl.searchParams.set('oldest', new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10))
@@ -125,17 +128,25 @@ Deno.serve(async (request) => {
           }).filter((w) => /^\d{4}-\d{2}-\d{2}$/.test(w.wellness_date))
           if (rows.length) {
             const { error } = await admin.from('intervals_wellness').upsert(rows, { onConflict: 'profile_id,wellness_date' })
-            if (error) { console.error('Could not save wellness', error.message); return json({ error: 'Could not save imported wellness data' }, 500) }
-            wellnessSynced = rows.length
+            if (error) { console.error('Could not save wellness', error.message); wellnessError = 'Could not save imported Wellness data.' }
+            else wellnessSynced = rows.length
           }
         }
-      } else if (wellnessResponse.status !== 403) {
+      } else {
         console.error('Intervals wellness sync returned', wellnessResponse.status)
+        wellnessError = wellnessResponse.status === 403
+          ? 'Intervals.icu denied Wellness access (403). Reconnect and grant WELLNESS:READ.'
+          : `Intervals.icu Wellness request failed (${wellnessResponse.status}).`
       }
-    } catch (error) { console.error('Intervals wellness sync failed', error instanceof Error ? error.message : 'unknown error') }
-    syncTimes.last_wellness_sync_at = now
+    } catch (error) {
+      console.error('Intervals wellness sync failed', error instanceof Error ? error.message : 'unknown error')
+      wellnessError = 'Could not contact Intervals.icu to refresh Wellness.'
+    }
+    if (!wellnessError) syncTimes.last_wellness_sync_at = now
   }
-  const { error: timestampError } = await admin.from('intervals_connections').update(syncTimes).eq('profile_id', user.id)
-  if (timestampError) return json({ error: 'Data synced, but sync time could not be saved' }, 500)
-  return json({ connected: true, synced: runs.length, wellness_synced: wellnessSynced })
+  if (Object.keys(syncTimes).length) {
+    const { error: timestampError } = await admin.from('intervals_connections').update(syncTimes).eq('profile_id', user.id)
+    if (timestampError) return json({ error: 'Data synced, but sync time could not be saved' }, 500)
+  }
+  return json({ connected: true, synced: runs.length, wellness_synced: wellnessSynced, wellness_error: wellnessError })
 })

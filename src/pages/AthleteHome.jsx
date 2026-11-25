@@ -69,6 +69,12 @@ export default function AthleteHome() {
       <Sidebar groups={groups} active={section} onSelect={setSection} ariaLabel={t('nav.athleteSections')} />
 
       <div className="flex-1 min-w-0 space-y-6">
+        {section === 'perfil' && <header className="flex flex-col gap-3 rounded-2xl bg-navy-deep p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div><p className="font-mono text-[11px] uppercase tracking-widest text-brand">XR · {t('nav.account')}</p><h1 className="mt-1 font-display text-2xl">{t('nav.profile')}</h1></div>
+          <label className="flex items-center gap-2 text-sm"><span className="sr-only">{t('profile.section')}</span><select value={profileSection} onChange={(e) => setProfileSection(e.target.value)} className="min-h-11 rounded-lg border border-white/20 bg-white px-3 py-2 font-semibold text-navy">
+            <option value="estadisticas">{t('nav.stats')}</option><option value="objetivos">{t('nav.goals')}</option><option value="zonas">{t('nav.zones')}</option><option value="tests">{t('nav.tests')}</option><option value="anamnesis">{t('sum.anamnesis')}</option><option value="bienestar">{t('wellness.title')}</option>
+          </select></label>
+        </header>}
         {/* El panel del plan se queda montado al cambiar de sección: así no se
             recargan los datos ni se pierde el mes que estabas mirando. */}
         <div className={isPlanSection ? '' : 'hidden'}>
@@ -85,12 +91,6 @@ export default function AthleteHome() {
         {section === 'conexiones' && <ConnectionsView onNavigate={setSection} userId={user.id} />}
 
         {section === 'perfil' && <div className="space-y-5">
-          <header className="flex flex-col gap-3 rounded-2xl bg-navy-deep p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div><p className="font-mono text-[11px] uppercase tracking-widest text-brand">XR · {t('nav.account')}</p><h1 className="mt-1 font-display text-2xl">{t('nav.profile')}</h1></div>
-            <label className="flex items-center gap-2 text-sm"><span className="sr-only">{t('profile.section')}</span><select value={profileSection} onChange={(e) => setProfileSection(e.target.value)} className="min-h-11 rounded-lg border border-white/20 bg-white px-3 py-2 font-semibold text-navy">
-              <option value="estadisticas">{t('nav.stats')}</option><option value="objetivos">{t('nav.goals')}</option><option value="zonas">{t('nav.zones')}</option><option value="tests">{t('nav.tests')}</option><option value="anamnesis">{t('sum.anamnesis')}</option><option value="bienestar">{t('wellness.title')}</option>
-            </select></label>
-          </header>
           {profileSection === 'anamnesis' && <div className="rounded-xl border border-mist bg-surface p-5 sm:p-6"><p className="mb-4 text-sm text-slate">{t('profile.autoNote')}</p><AnamnesisForm athleteId={user.id} basicProfile={profile} /></div>}
           {profileSection === 'bienestar' && <IntervalsWellnessPanel athleteId={user.id} />}
         </div>}
